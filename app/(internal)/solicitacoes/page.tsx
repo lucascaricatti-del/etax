@@ -19,7 +19,7 @@ export default async function SolicitacoesPage({
     .select(
       "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), workspace:workspaces(id, nome)"
     )
-    .order("created_at", { ascending: false });
+    .order("criado_em", { ascending: false });
 
   // Scope by workspace
   if (sessao?.isEtax) {
@@ -136,7 +136,7 @@ export default async function SolicitacoesPage({
                     <StatusBadge status={s.status} />
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                    {new Date(s.criado_em).toLocaleDateString("pt-BR")}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link

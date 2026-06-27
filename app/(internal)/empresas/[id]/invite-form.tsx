@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 export function InviteForm({ workspaceId }: { workspaceId: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("membro");
+  const [papel, setPapel] = useState("membro");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [inviteLink, setInviteLink] = useState("");
@@ -20,7 +20,7 @@ export function InviteForm({ workspaceId }: { workspaceId: string }) {
     const res = await fetch(`/api/empresas/${workspaceId}/convites`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, role }),
+      body: JSON.stringify({ email, papel }),
     });
 
     const body = await res.json();
@@ -61,8 +61,8 @@ export function InviteForm({ workspaceId }: { workspaceId: string }) {
             Papel
           </label>
           <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
+            value={papel}
+            onChange={(e) => setPapel(e.target.value)}
             className={inputClass}
           >
             <option value="membro">Membro</option>

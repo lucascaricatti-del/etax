@@ -14,9 +14,9 @@ export async function POST(
 
   const { id: workspaceId } = await params;
   const body = await request.json();
-  const { email, role } = body;
+  const { email, papel } = body;
 
-  if (!email || !role) {
+  if (!email || !papel) {
     return NextResponse.json(
       { error: "E-mail e papel são obrigatórios" },
       { status: 400 }
@@ -47,10 +47,10 @@ export async function POST(
   const { error } = await supabase.from("workspace_invites").insert({
     workspace_id: workspaceId,
     email,
-    role,
+    papel,
     token,
-    accepted: false,
-    expires_at: expiresAt.toISOString(),
+    criado_por: sessao.user.id,
+    expira_em: expiresAt.toISOString(),
   });
 
   if (error) {

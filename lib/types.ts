@@ -4,26 +4,25 @@ export interface Workspace {
   cnpj: string | null;
   slug: string;
   ativo: boolean;
-  created_at: string;
+  criado_em: string;
 }
 
 export interface WorkspaceMember {
-  id: string;
   workspace_id: string;
   user_id: string;
-  role: string;
-  created_at: string;
+  papel: string;
+  criado_em: string;
 }
 
 export interface WorkspaceInvite {
   id: string;
   workspace_id: string;
   email: string;
-  role: string;
+  papel: string;
   token: string;
-  accepted: boolean;
-  expires_at: string;
-  created_at: string;
+  aceito_em: string | null;
+  expira_em: string;
+  criado_em: string;
 }
 
 export interface CampoSchema {
@@ -41,7 +40,6 @@ export interface TipoContrato {
   slug: string;
   schema_campos: CampoSchema[];
   ativo: boolean;
-  created_at: string;
 }
 
 export interface Contraparte {
@@ -51,7 +49,8 @@ export interface Contraparte {
   tipo_pessoa: "PF" | "PJ";
   email: string | null;
   telefone: string | null;
-  created_at: string;
+  criado_em: string;
+  workspace_id: string | null;
 }
 
 export interface Solicitacao {
@@ -59,11 +58,12 @@ export interface Solicitacao {
   tipo_contrato_id: string;
   contraparte_id: string;
   workspace_id: string | null;
+  solicitante_id: string | null;
   status: string;
   dados: Record<string, unknown>;
   observacoes: string | null;
-  created_at: string;
-  updated_at: string;
+  criado_em: string;
+  atualizado_em: string;
 }
 
 export interface SolicitacaoComDetalhes extends Solicitacao {

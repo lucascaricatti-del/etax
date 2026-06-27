@@ -84,7 +84,7 @@ export default async function SolicitacaoDetalhePage({
             <div>
               <dt className="text-gray-500">Data de criação</dt>
               <dd className="font-medium">
-                {new Date(s.created_at).toLocaleDateString("pt-BR", {
+                {new Date(s.criado_em).toLocaleDateString("pt-BR", {
                   day: "2-digit",
                   month: "2-digit",
                   year: "numeric",

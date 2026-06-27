@@ -25,7 +25,7 @@ export default async function AceitarConvitePage({
 
   const { data: invite } = await supabase
     .from("workspace_invites")
-    .select("id, email, role, accepted, expires_at, workspace:workspaces(id, nome)")
+    .select("id, email, papel, aceito_em, expira_em, workspace:workspaces(id, nome)")
     .eq("token", token)
     .single();
 
@@ -42,7 +42,7 @@ export default async function AceitarConvitePage({
     );
   }
 
-  if (invite.accepted) {
+  if (invite.aceito_em) {
     return (
       <div className="flex items-center justify-center min-h-full bg-gray-50">
         <div className="text-center p-8">
@@ -55,7 +55,7 @@ export default async function AceitarConvitePage({
     );
   }
 
-  if (new Date(invite.expires_at) < new Date()) {
+  if (new Date(invite.expira_em) < new Date()) {
     return (
       <div className="flex items-center justify-center min-h-full bg-gray-50">
         <div className="text-center p-8">

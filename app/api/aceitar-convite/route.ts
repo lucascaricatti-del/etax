@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   // 1. Validate invite
   const { data: invite, error: inviteError } = await supabase
     .from("workspace_invites")
-    .select("id, email, role, workspace_id, accepted, expires_at")
+    .select("id, email, papel, workspace_id, aceito_em, expira_em")
     .eq("token", token)
     .single();
 
@@ -28,14 +28,14 @@ export async function POST(request: Request) {
     );
   }
 
-  if (invite.accepted) {
+  if (invite.aceito_em) {
     return NextResponse.json(
       { error: "Convite já foi aceito" },
       { status: 400 }
     );
   }
 
-  if (new Date(invite.expires_at) < new Date()) {
+  if (new Date(invite.expira_em) < new Date()) {
     return NextResponse.json(
       { error: "Convite expirado" },
       { status: 400 }
@@ -63,6 +63,7 @@ export async function POST(request: Request) {
   await supabase.from("profiles").upsert({
     id: userId,
     nome,
+    email: invite.email,
     tipo_usuario: "cliente",
   });
 
@@ -70,13 +71,13 @@ export async function POST(request: Request) {
   await supabase.from("workspace_members").insert({
     workspace_id: invite.workspace_id,
     user_id: userId,
-    role: invite.role,
+    papel: invite.papel,
   });
 
   // 5. Mark invite as accepted
   await supabase
     .from("workspace_invites")
-    .update({ accepted: true })
+    .update({ aceito_em: new Date().toISOString() })
     .eq("id", invite.id);
 
   return NextResponse.json({ ok: true }, { status: 200 });

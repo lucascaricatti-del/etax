@@ -14,14 +14,7 @@ export async function getSessao(): Promise<Sessao | null> {
 
   const {
     data: { user },
-    error: userError,
   } = await authClient.auth.getUser();
-
-  console.log("[getSessao] auth.getUser():", {
-    userId: user?.id ?? null,
-    email: user?.email ?? null,
-    error: userError?.message ?? null,
-  });
 
   if (!user) return null;
 
@@ -44,13 +37,6 @@ export async function getSessao(): Promise<Sessao | null> {
   const workspaceIds = (memberships ?? []).map(
     (m: { workspace_id: string }) => m.workspace_id
   );
-
-  console.log("[getSessao] result:", {
-    userId: user.id,
-    isEtax,
-    tipoUsuario: profile?.tipo_usuario ?? null,
-    workspaceIds,
-  });
 
   return {
     user: { id: user.id, email: user.email },

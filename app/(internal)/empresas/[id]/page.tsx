@@ -27,9 +27,9 @@ export default async function EmpresaDetalhePage({
   // Fetch members with profiles
   const { data: members } = await supabase
     .from("workspace_members")
-    .select("id, role, created_at, user_id")
+    .select("workspace_id, user_id, papel, criado_em")
     .eq("workspace_id", id)
-    .order("created_at");
+    .order("criado_em");
 
   // Fetch profiles for members
   const userIds = (members ?? []).map((m) => m.user_id);
@@ -44,7 +44,6 @@ export default async function EmpresaDetalhePage({
     (profiles ?? []).map((p) => [p.id, p])
   );
 
-  // Fetch user emails from auth (via admin)
   const membersList = (members ?? []).map((m) => ({
     ...m,
     profile: profileMap.get(m.user_id),
@@ -53,17 +52,17 @@ export default async function EmpresaDetalhePage({
   // Fetch solicitacoes for this workspace
   const { data: solicitacoes } = await supabase
     .from("solicitacoes")
-    .select("id, status, dados, created_at, tipo_contrato:tipos_contrato(nome), contraparte:contrapartes(nome)")
+    .select("id, status, dados, criado_em, tipo_contrato:tipos_contrato(nome), contraparte:contrapartes(nome)")
     .eq("workspace_id", id)
-    .order("created_at", { ascending: false })
+    .order("criado_em", { ascending: false })
     .limit(20);
 
   // Fetch pending invites
   const { data: invites } = await supabase
     .from("workspace_invites")
-    .select("id, email, role, token, accepted, created_at")
+    .select("id, email, papel, token, aceito_em, criado_em")
     .eq("workspace_id", id)
-    .order("created_at", { ascending: false });
+    .order("criado_em", { ascending: false });
 
   return (
     <div>
@@ -105,7 +104,7 @@ export default async function EmpresaDetalhePage({
             <div>
               <dt className="text-gray-500">Criado em</dt>
               <dd className="font-medium">
-                {new Date(workspace.created_at).toLocaleDateString("pt-BR")}
+                {new Date(workspace.criado_em).toLocaleDateString("pt-BR")}
               </dd>
             </div>
           </dl>
@@ -121,11 +120,11 @@ export default async function EmpresaDetalhePage({
           ) : (
             <ul className="space-y-2">
               {membersList.map((m) => (
-                <li key={m.id} className="flex items-center justify-between text-sm">
+                <li key={m.user_id} className="flex items-center justify-between text-sm">
                   <span className="font-medium">
                     {m.profile?.nome ?? "Sem nome"}
                   </span>
-                  <span className="text-gray-500 text-xs">{m.role}</span>
+                  <span className="text-gray-500 text-xs">{m.papel}</span>
                 </li>
               ))}
             </ul>
@@ -152,15 +151,15 @@ export default async function EmpresaDetalhePage({
                   <div>
                     <span className="font-medium">{inv.email}</span>
                     <span className="text-gray-500 text-xs ml-2">
-                      ({inv.role})
+                      ({inv.papel})
                     </span>
                   </div>
                   <span
                     className={`text-xs font-medium ${
-                      inv.accepted ? "text-green-600" : "text-yellow-600"
+                      inv.aceito_em ? "text-green-600" : "text-yellow-600"
                     }`}
                   >
-                    {inv.accepted ? "Aceito" : "Pendente"}
+                    {inv.aceito_em ? "Aceito" : "Pendente"}
                   </span>
                 </div>
               ))}
@@ -212,7 +211,7 @@ export default async function EmpresaDetalhePage({
                         <StatusBadge status={s.status as string} />
                       </td>
                       <td className="px-3 py-2 text-sm text-gray-600">
-                        {new Date(s.created_at as string).toLocaleDateString("pt-BR")}
+                        {new Date(s.criado_em as string).toLocaleDateString("pt-BR")}
                       </td>
                       <td className="px-3 py-2 text-right">
                         <Link
