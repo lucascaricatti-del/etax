@@ -56,6 +56,62 @@ function mapEventToSolicitacaoStatus(
 }
 
 // ---------------------------------------------------------------------------
+// PDF Storage — baixa o PDF assinado da ClickSign e sobe pro Supabase Storage
+// ---------------------------------------------------------------------------
+
+async function storeSignedPdf(
+  supabase: ReturnType<typeof createAdminClient>,
+  contratoId: string,
+  signedFileUrl: string,
+  checksum: string | null
+): Promise<void> {
+  const storagePath = `${contratoId}.pdf`;
+
+  // 1. Baixar PDF da ClickSign (link expira em ~5min)
+  const pdfRes = await fetch(signedFileUrl);
+  if (!pdfRes.ok) {
+    throw new Error(`Download falhou (${pdfRes.status}): ${signedFileUrl}`);
+  }
+
+  const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+  console.log("[Webhook ClickSign] PDF baixado:", {
+    contratoId,
+    size: pdfBuffer.length,
+  });
+
+  // 2. Upload para o Storage
+  const { error: errUpload } = await supabase.storage
+    .from("contratos-assinados")
+    .upload(storagePath, pdfBuffer, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
+
+  if (errUpload) {
+    throw new Error(`Upload falhou: ${errUpload.message}`);
+  }
+
+  // 3. Salvar path e checksum no contrato
+  const updateFields: Record<string, unknown> = {
+    pdf_assinado_path: storagePath,
+  };
+  if (checksum) {
+    updateFields.signed_checksum = checksum;
+  }
+
+  const { error: errUpdate } = await supabase
+    .from("contratos")
+    .update(updateFields)
+    .eq("id", contratoId);
+
+  if (errUpdate) {
+    throw new Error(`Update contrato falhou: ${errUpdate.message}`);
+  }
+
+  console.log("[Webhook ClickSign] PDF armazenado:", { contratoId, storagePath });
+}
+
+// ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
 
@@ -225,7 +281,23 @@ export async function POST(request: Request) {
       });
     }
 
-    // 8. Atualizar solicitação vinculada
+    // 8. Baixar e armazenar PDF assinado (resiliente — não quebra o webhook)
+    if (newStatus === "assinado") {
+      const signedFileUrl = document?.downloads?.signed_file_url;
+      const signedChecksum = (document as Record<string, unknown>)?.signed_file_checksum as string | null ?? null;
+
+      if (signedFileUrl) {
+        try {
+          await storeSignedPdf(supabase, contrato.id, signedFileUrl, signedChecksum);
+        } catch (pdfErr) {
+          console.error("[Webhook ClickSign] Falha ao armazenar PDF (não-fatal):", pdfErr);
+        }
+      } else {
+        console.warn("[Webhook ClickSign] Evento de assinatura sem signed_file_url");
+      }
+    }
+
+    // 9. Atualizar solicitação vinculada
     const solicitacaoStatus = mapEventToSolicitacaoStatus(eventName);
     if (contrato.solicitacao_id && solicitacaoStatus) {
       const { error: errSol } = await supabase
