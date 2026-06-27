@@ -54,8 +54,15 @@ Headers: `Authorization: {token}` + `Content-Type: application/vnd.api+json`.
 Webhook `/api/webhooks/clicksign`: validar HMAC, atualizar `status_assinatura`, gravar em `eventos_assinatura`.
 Payloads exatos: `https://developers.clicksign.com/llms.txt`.
 
+## Producao
+- **Dominio:** `https://app.e-taxconsultoria.com.br` (Vercel)
+- **Supabase Auth — Site URL:** `https://app.e-taxconsultoria.com.br`
+- **Supabase Auth — Redirect URLs:** `https://app.e-taxconsultoria.com.br/**`
+- **Webhook ClickSign:** `https://app.e-taxconsultoria.com.br/api/webhooks/clicksign`
+
 ## Variaveis de ambiente
 ```
+NEXT_PUBLIC_APP_URL=https://app.e-taxconsultoria.com.br
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=

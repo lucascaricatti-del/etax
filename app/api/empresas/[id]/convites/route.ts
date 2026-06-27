@@ -61,9 +61,13 @@ export async function POST(
   }
 
   const headersList = await headers();
-  const host = headersList.get("host") ?? "localhost:3000";
-  const protocol = host.startsWith("localhost") ? "http" : "https";
-  const link = `${protocol}://${host}/aceitar-convite?token=${token}`;
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (() => {
+      const h = headersList.get("host") ?? "localhost:3000";
+      return `${h.startsWith("localhost") ? "http" : "https"}://${h}`;
+    })();
+  const link = `${appUrl}/aceitar-convite?token=${token}`;
 
   return NextResponse.json({ link }, { status: 201 });
 }
