@@ -1,7 +1,8 @@
+import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AcceptForm } from "./accept-form";
 
-export const metadata = { title: "Aceitar convite — Etax Ops" };
+export const metadata = { title: "Aceitar convite — E-TAX Ops" };
 
 export default async function AceitarConvitePage({
   searchParams,
@@ -12,10 +13,12 @@ export default async function AceitarConvitePage({
 
   if (!token) {
     return (
-      <div className="flex items-center justify-center min-h-full bg-gray-50">
+      <div className="flex items-center justify-center min-h-full bg-[var(--color-bg)]">
         <div className="text-center p-8">
-          <h1 className="text-2xl font-bold mb-2">Link inválido</h1>
-          <p className="text-gray-600">Token de convite não fornecido.</p>
+          <h1 className="font-heading text-2xl font-semibold text-[var(--color-text)] mb-2">
+            Link inválido
+          </h1>
+          <p className="text-[var(--color-text-soft)]">Token de convite não fornecido.</p>
         </div>
       </div>
     );
@@ -31,10 +34,12 @@ export default async function AceitarConvitePage({
 
   if (!invite) {
     return (
-      <div className="flex items-center justify-center min-h-full bg-gray-50">
+      <div className="flex items-center justify-center min-h-full bg-[var(--color-bg)]">
         <div className="text-center p-8">
-          <h1 className="text-2xl font-bold mb-2">Convite não encontrado</h1>
-          <p className="text-gray-600">
+          <h1 className="font-heading text-2xl font-semibold text-[var(--color-text)] mb-2">
+            Convite não encontrado
+          </h1>
+          <p className="text-[var(--color-text-soft)]">
             Este link de convite é inválido ou já foi utilizado.
           </p>
         </div>
@@ -44,10 +49,12 @@ export default async function AceitarConvitePage({
 
   if (invite.aceito_em) {
     return (
-      <div className="flex items-center justify-center min-h-full bg-gray-50">
+      <div className="flex items-center justify-center min-h-full bg-[var(--color-bg)]">
         <div className="text-center p-8">
-          <h1 className="text-2xl font-bold mb-2">Convite já aceito</h1>
-          <p className="text-gray-600">
+          <h1 className="font-heading text-2xl font-semibold text-[var(--color-text)] mb-2">
+            Convite já aceito
+          </h1>
+          <p className="text-[var(--color-text-soft)]">
             Este convite já foi utilizado. Faça login para acessar o sistema.
           </p>
         </div>
@@ -57,10 +64,12 @@ export default async function AceitarConvitePage({
 
   if (new Date(invite.expira_em) < new Date()) {
     return (
-      <div className="flex items-center justify-center min-h-full bg-gray-50">
+      <div className="flex items-center justify-center min-h-full bg-[var(--color-bg)]">
         <div className="text-center p-8">
-          <h1 className="text-2xl font-bold mb-2">Convite expirado</h1>
-          <p className="text-gray-600">
+          <h1 className="font-heading text-2xl font-semibold text-[var(--color-text)] mb-2">
+            Convite expirado
+          </h1>
+          <p className="text-[var(--color-text-soft)]">
             Este convite expirou. Solicite um novo convite ao administrador.
           </p>
         </div>
@@ -71,14 +80,23 @@ export default async function AceitarConvitePage({
   const workspace = invite.workspace as unknown as { id: string; nome: string } | null;
 
   return (
-    <div className="flex items-center justify-center min-h-full bg-gray-50">
+    <div className="flex items-center justify-center min-h-full bg-[var(--color-bg)]">
       <div className="w-full max-w-sm space-y-6 p-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Etax Ops</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <Image
+            src="/LOGO ETAX PNG-07.png"
+            alt="E-TAX"
+            width={48}
+            height={48}
+            className="mx-auto mb-3"
+          />
+          <h1 className="font-heading text-2xl font-semibold text-[var(--color-text)]">
+            E-TAX Ops
+          </h1>
+          <p className="text-sm text-[var(--color-text-soft)] mt-1">
             Você foi convidado para <strong>{workspace?.nome}</strong>
           </p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-[var(--color-text-mute)] mt-1">
             Crie sua senha para acessar o sistema.
           </p>
         </div>

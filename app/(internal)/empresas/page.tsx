@@ -41,76 +41,70 @@ export default async function EmpresasPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Empresas</h1>
+      <div className="mb-6">
+        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+          Empresas
+        </h1>
+        <p className="mt-1 text-sm text-[var(--color-text-mute)]">
+          Gestão de workspaces e clientes
+        </p>
       </div>
 
       <NovaEmpresaForm />
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 mt-6">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="etax-card mt-6 overflow-x-auto p-0">
+        <table className="etax-table">
+          <thead>
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Nome
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                CNPJ
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Membros
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Solicitações
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Status
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                Ação
-              </th>
+              <th>Nome</th>
+              <th>CNPJ</th>
+              <th>Membros</th>
+              <th>Solicitações</th>
+              <th>Status</th>
+              <th className="text-right">Ação</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <tbody>
             {items.length === 0 ? (
               <tr>
                 <td
                   colSpan={6}
-                  className="px-4 py-8 text-center text-sm text-gray-500"
+                  className="!text-center !py-8 text-[var(--color-text-mute)]"
                 >
                   Nenhuma empresa cadastrada.
                 </td>
               </tr>
             ) : (
               items.map((w) => (
-                <tr key={w.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {w.nome}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                <tr key={w.id}>
+                  <td className="font-medium">{w.nome}</td>
+                  <td className="text-[var(--color-text-soft)]">
                     {w.cnpj ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="text-[var(--color-text-soft)]">
                     {membersMap.get(w.id) ?? 0}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="text-[var(--color-text-soft)]">
                     {solsMap.get(w.id) ?? 0}
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <span
-                      className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                         w.ativo
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-600"
+                          ? "bg-[var(--color-status-ok-bg)] text-[var(--color-status-ok)]"
+                          : "bg-[var(--color-status-info-bg)] text-[var(--color-status-info)]"
                       }`}
                     >
+                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${
+                        w.ativo ? "bg-[var(--color-status-ok)]" : "bg-[var(--color-status-info)]"
+                      }`} />
                       {w.ativo ? "Ativo" : "Inativo"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="text-right">
                     <Link
                       href={`/empresas/${w.id}`}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                      className="text-sm font-medium text-[var(--color-text-soft)] hover:text-[var(--color-text)]"
                     >
                       Ver
                     </Link>

@@ -20,10 +20,8 @@ const fieldDefs = [
   { key: "telefone", label: "Telefone", required: false },
 ] as const;
 
-const inputClass =
-  "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
-const errorInputClass =
-  "block w-full rounded-lg border border-red-400 px-3 py-2 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none";
+const inputClass = "etax-input";
+const errorInputClass = "etax-input etax-input-error";
 
 export function ContraparteEditor({
   contraparte,
@@ -180,15 +178,13 @@ export function ContraparteEditor({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 p-5">
+    <div className="etax-card">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase">
-          Contraparte
-        </h2>
+        <h2 className="etax-section-label !mb-0">Contraparte</h2>
         {canEdit && !editing && (
           <button
             onClick={startEditing}
-            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            className="text-sm font-medium text-[var(--color-text-soft)] hover:text-[var(--color-text)]"
           >
             Editar
           </button>
@@ -198,14 +194,14 @@ export function ContraparteEditor({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="etax-btn etax-btn-primary py-1.5 px-3"
             >
               {saving ? "Salvando..." : "Salvar"}
             </button>
             <button
               onClick={cancelEditing}
               disabled={saving}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="etax-btn etax-btn-ghost py-1.5 px-3"
             >
               Cancelar
             </button>
@@ -214,7 +210,7 @@ export function ContraparteEditor({
       </div>
 
       {error && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-3 rounded-[var(--radius-btn)] border border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)] p-3 text-sm text-[var(--color-status-danger)]">
           {error}
         </div>
       )}
@@ -223,10 +219,10 @@ export function ContraparteEditor({
         <div className="space-y-3">
           {fieldDefs.map((field) => (
             <div key={field.key}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-[var(--color-text-soft)] mb-1">
                 {field.label}
                 {field.required && (
-                  <span className="text-red-500 ml-0.5">*</span>
+                  <span className="text-[var(--color-status-danger)] ml-0.5">*</span>
                 )}
               </label>
               <input
@@ -243,7 +239,7 @@ export function ContraparteEditor({
                 }
               />
               {fieldErrors[field.key] && (
-                <p className="mt-1 text-xs text-red-600">
+                <p className="mt-1 text-xs text-[var(--color-status-danger)]">
                   {fieldErrors[field.key]}
                 </p>
               )}
@@ -254,7 +250,7 @@ export function ContraparteEditor({
         <dl className="space-y-2 text-sm">
           {fieldDefs.map((field) => (
             <div key={field.key}>
-              <dt className="text-gray-500">{field.label}</dt>
+              <dt className="text-[var(--color-text-mute)]">{field.label}</dt>
               <dd className="font-medium">{displayValue(field.key)}</dd>
             </div>
           ))}

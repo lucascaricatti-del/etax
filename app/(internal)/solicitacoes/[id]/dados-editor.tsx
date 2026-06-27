@@ -103,15 +103,15 @@ export function DadosEditor({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 p-5 md:col-span-2">
+    <div className="etax-card md:col-span-2">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase">
+        <h2 className="etax-section-label !mb-0">
           Dados do formulário
         </h2>
         {canEdit && !editing && (
           <button
             onClick={startEditing}
-            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            className="text-sm font-medium text-[var(--color-text-soft)] hover:text-[var(--color-text)]"
           >
             Editar
           </button>
@@ -121,14 +121,14 @@ export function DadosEditor({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="etax-btn etax-btn-primary py-1.5 px-3"
             >
               {saving ? "Salvando..." : "Salvar"}
             </button>
             <button
               onClick={cancelEditing}
               disabled={saving}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="etax-btn etax-btn-ghost py-1.5 px-3"
             >
               Cancelar
             </button>
@@ -137,7 +137,7 @@ export function DadosEditor({
       </div>
 
       {error && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-3 rounded-[var(--radius-btn)] border border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)] p-3 text-sm text-[var(--color-status-danger)]">
           {error}
         </div>
       )}
@@ -158,7 +158,7 @@ export function DadosEditor({
         <dl className="grid gap-3 sm:grid-cols-2">
           {schema.map((campo) => (
             <div key={campo.key}>
-              <dt className="text-sm text-gray-500">{campo.label}</dt>
+              <dt className="text-sm text-[var(--color-text-mute)]">{campo.label}</dt>
               <dd className="text-sm font-medium">{displayValue(campo)}</dd>
             </div>
           ))}

@@ -45,13 +45,15 @@ export default async function SolicitacaoDetalhePage({
     <div>
       <Link
         href="/solicitacoes"
-        className="text-sm text-blue-600 hover:text-blue-800 mb-4 inline-block"
+        className="text-sm text-[var(--color-text-soft)] hover:text-[var(--color-text)] mb-4 inline-block"
       >
         &larr; Voltar para solicitações
       </Link>
 
       <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold">Solicitação</h1>
+        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+          Solicitação
+        </h1>
         <StatusBadge status={s.status} />
         {canEdit && (
           <GerarContratoButton
@@ -72,25 +74,23 @@ export default async function SolicitacaoDetalhePage({
         )}
 
         {/* Info geral */}
-        <div className="rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-            Informações gerais
-          </h2>
+        <div className="etax-card">
+          <h2 className="etax-section-label">Informações gerais</h2>
           <dl className="space-y-2 text-sm">
             <div>
-              <dt className="text-gray-500">Tipo de contrato</dt>
+              <dt className="text-[var(--color-text-mute)]">Tipo de contrato</dt>
               <dd className="font-medium">
                 {s.tipo_contrato?.nome ?? "—"}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Status</dt>
+              <dt className="text-[var(--color-text-mute)]">Status</dt>
               <dd>
                 <StatusBadge status={s.status} />
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Data de criação</dt>
+              <dt className="text-[var(--color-text-mute)]">Data de criação</dt>
               <dd className="font-medium">
                 {new Date(s.criado_em).toLocaleDateString("pt-BR", {
                   day: "2-digit",
@@ -114,10 +114,8 @@ export default async function SolicitacaoDetalhePage({
 
         {/* Observações */}
         {s.observacoes && (
-          <div className="rounded-lg border border-gray-200 p-5 md:col-span-2">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-              Observações
-            </h2>
+          <div className="etax-card md:col-span-2">
+            <h2 className="etax-section-label">Observações</h2>
             <p className="text-sm whitespace-pre-wrap">{s.observacoes}</p>
           </div>
         )}

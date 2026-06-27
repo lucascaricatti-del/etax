@@ -1,20 +1,30 @@
 import Link from "next/link";
+import Image from "next/image";
 import { SignupForm } from "./signup-form";
 
-export const metadata = { title: "Criar conta — Etax Ops" };
+export const metadata = { title: "Criar conta — E-TAX Ops" };
 
 export default function SignupPage() {
   return (
-    <div className="flex items-center justify-center min-h-full bg-gray-50">
+    <div className="flex items-center justify-center min-h-full bg-[var(--color-bg)]">
       <div className="w-full max-w-sm space-y-6 p-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Etax Ops</h1>
-          <p className="text-sm text-gray-600 mt-1">Crie sua conta</p>
+          <Image
+            src="/LOGO ETAX PNG-07.png"
+            alt="E-TAX"
+            width={48}
+            height={48}
+            className="mx-auto mb-3"
+          />
+          <h1 className="font-heading text-2xl font-semibold text-[var(--color-text)]">
+            E-TAX Ops
+          </h1>
+          <p className="text-sm text-[var(--color-text-mute)] mt-1">Crie sua conta</p>
         </div>
         <SignupForm />
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-[var(--color-text-mute)]">
           Já tem conta?{" "}
-          <Link href="/login" className="text-blue-600 hover:text-blue-800">
+          <Link href="/login" className="text-[var(--color-text-soft)] hover:text-[var(--color-text)] font-medium">
             Entrar
           </Link>
         </p>

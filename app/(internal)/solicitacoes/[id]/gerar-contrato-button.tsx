@@ -46,27 +46,27 @@ export function GerarContratoButton({
   if (showConfirm) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-        <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-          <h3 className="text-lg font-semibold mb-4">
+        <div className="w-full max-w-md rounded-[var(--radius-card)] bg-[var(--color-card)] p-6 shadow-xl">
+          <h3 className="text-lg font-semibold mb-4 text-[var(--color-text)]">
             Confirmar geração do contrato
           </h3>
 
-          <p className="text-sm text-gray-600 mb-3">
+          <p className="text-sm text-[var(--color-text-soft)] mb-3">
             O contrato será enviado para assinatura de:
           </p>
 
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-4 space-y-2">
+          <div className="rounded-[var(--radius-btn)] border border-[var(--color-line)] bg-[var(--color-bg)] p-4 mb-4 space-y-2">
             <div>
-              <span className="text-xs text-gray-500 uppercase">
+              <span className="text-xs text-[var(--color-text-mute)] uppercase">
                 Representante / Signatário
               </span>
               <p className="text-sm font-semibold">{signerNome}</p>
             </div>
             <div>
-              <span className="text-xs text-gray-500 uppercase">E-mail</span>
+              <span className="text-xs text-[var(--color-text-mute)] uppercase">E-mail</span>
               <p className="text-sm font-semibold">
                 {signerEmail || (
-                  <span className="text-red-600">
+                  <span className="text-[var(--color-status-danger)]">
                     E-mail não cadastrado
                   </span>
                 )}
@@ -75,14 +75,14 @@ export function GerarContratoButton({
           </div>
 
           {!signerEmail && (
-            <p className="text-sm text-red-600 mb-4">
+            <p className="text-sm text-[var(--color-status-danger)] mb-4">
               O campo &quot;email&quot; do representante não está preenchido nos dados
               da solicitação. Edite os dados antes de gerar o contrato.
             </p>
           )}
 
           {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="mb-4 rounded-[var(--radius-btn)] border border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)] p-3 text-sm text-[var(--color-status-danger)]">
               {error}
             </div>
           )}
@@ -94,14 +94,14 @@ export function GerarContratoButton({
                 setError(null);
               }}
               disabled={loading}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="etax-btn etax-btn-ghost"
             >
               Cancelar
             </button>
             <button
               onClick={handleConfirm}
               disabled={loading || !signerEmail}
-              className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="etax-btn etax-btn-primary"
             >
               {loading ? (
                 <>
@@ -121,7 +121,7 @@ export function GerarContratoButton({
   return (
     <button
       onClick={() => setShowConfirm(true)}
-      className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+      className="etax-btn etax-btn-primary"
     >
       Gerar contrato
     </button>

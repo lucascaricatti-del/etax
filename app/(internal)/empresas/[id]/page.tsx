@@ -68,41 +68,44 @@ export default async function EmpresaDetalhePage({
     <div>
       <Link
         href="/empresas"
-        className="text-sm text-blue-600 hover:text-blue-800 mb-4 inline-block"
+        className="text-sm text-[var(--color-text-soft)] hover:text-[var(--color-text)] mb-4 inline-block"
       >
         &larr; Voltar para empresas
       </Link>
 
       <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold">{workspace.nome}</h1>
+        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+          {workspace.nome}
+        </h1>
         <span
-          className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
             workspace.ativo
-              ? "bg-green-100 text-green-800"
-              : "bg-gray-100 text-gray-600"
+              ? "bg-[var(--color-status-ok-bg)] text-[var(--color-status-ok)]"
+              : "bg-[var(--color-status-info-bg)] text-[var(--color-status-info)]"
           }`}
         >
+          <span className={`inline-block h-1.5 w-1.5 rounded-full ${
+            workspace.ativo ? "bg-[var(--color-status-ok)]" : "bg-[var(--color-status-info)]"
+          }`} />
           {workspace.ativo ? "Ativo" : "Inativo"}
         </span>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Dados */}
-        <div className="rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-            Dados
-          </h2>
+        <div className="etax-card">
+          <h2 className="etax-section-label">Dados</h2>
           <dl className="space-y-2 text-sm">
             <div>
-              <dt className="text-gray-500">CNPJ</dt>
+              <dt className="text-[var(--color-text-mute)]">CNPJ</dt>
               <dd className="font-medium">{workspace.cnpj ?? "—"}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Slug</dt>
+              <dt className="text-[var(--color-text-mute)]">Slug</dt>
               <dd className="font-medium">{workspace.slug}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Criado em</dt>
+              <dt className="text-[var(--color-text-mute)]">Criado em</dt>
               <dd className="font-medium">
                 {new Date(workspace.criado_em).toLocaleDateString("pt-BR")}
               </dd>
@@ -111,12 +114,10 @@ export default async function EmpresaDetalhePage({
         </div>
 
         {/* Membros */}
-        <div className="rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-            Membros ({membersList.length})
-          </h2>
+        <div className="etax-card">
+          <h2 className="etax-section-label">Membros ({membersList.length})</h2>
           {membersList.length === 0 ? (
-            <p className="text-sm text-gray-500">Nenhum membro.</p>
+            <p className="text-sm text-[var(--color-text-mute)]">Nenhum membro.</p>
           ) : (
             <ul className="space-y-2">
               {membersList.map((m) => (
@@ -124,7 +125,7 @@ export default async function EmpresaDetalhePage({
                   <span className="font-medium">
                     {m.profile?.nome ?? "Sem nome"}
                   </span>
-                  <span className="text-gray-500 text-xs">{m.papel}</span>
+                  <span className="text-[var(--color-text-mute)] text-xs">{m.papel}</span>
                 </li>
               ))}
             </ul>
@@ -132,31 +133,31 @@ export default async function EmpresaDetalhePage({
         </div>
 
         {/* Convidar */}
-        <div className="rounded-lg border border-gray-200 p-5 md:col-span-2">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-            Convidar usuário
-          </h2>
+        <div className="etax-card md:col-span-2">
+          <h2 className="etax-section-label">Convidar usuário</h2>
           <InviteForm workspaceId={id} />
 
           {(invites ?? []).length > 0 && (
             <div className="mt-4 space-y-2">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase">
+              <h3 className="text-xs font-semibold text-[var(--color-text-mute)] uppercase">
                 Convites enviados
               </h3>
               {(invites ?? []).map((inv) => (
                 <div
                   key={inv.id}
-                  className="flex items-center justify-between text-sm border border-gray-100 rounded p-2"
+                  className="flex items-center justify-between text-sm border border-[var(--color-line)] rounded-[var(--radius-btn)] p-2"
                 >
                   <div>
                     <span className="font-medium">{inv.email}</span>
-                    <span className="text-gray-500 text-xs ml-2">
+                    <span className="text-[var(--color-text-mute)] text-xs ml-2">
                       ({inv.papel})
                     </span>
                   </div>
                   <span
                     className={`text-xs font-medium ${
-                      inv.aceito_em ? "text-green-600" : "text-yellow-600"
+                      inv.aceito_em
+                        ? "text-[var(--color-status-ok)]"
+                        : "text-[var(--color-status-warn)]"
                     }`}
                   >
                     {inv.aceito_em ? "Aceito" : "Pendente"}
@@ -168,55 +169,43 @@ export default async function EmpresaDetalhePage({
         </div>
 
         {/* Solicitações */}
-        <div className="rounded-lg border border-gray-200 p-5 md:col-span-2">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-            Solicitações
-          </h2>
+        <div className="etax-card md:col-span-2 p-0">
+          <h2 className="etax-section-label px-5 pt-5">Solicitações</h2>
           {(solicitacoes ?? []).length === 0 ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[var(--color-text-mute)] px-5 pb-5">
               Nenhuma solicitação neste workspace.
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="etax-table">
                 <thead>
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Contraparte
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Tipo
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Data
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      Ação
-                    </th>
+                    <th>Contraparte</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                    <th className="text-right">Ação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   {(solicitacoes ?? []).map((s: Record<string, unknown>) => (
                     <tr key={s.id as string}>
-                      <td className="px-3 py-2 text-sm">
+                      <td className="font-medium">
                         {(s.contraparte as { nome?: string })?.nome ?? "—"}
                       </td>
-                      <td className="px-3 py-2 text-sm text-gray-600">
+                      <td className="text-[var(--color-text-soft)]">
                         {(s.tipo_contrato as { nome?: string })?.nome ?? "—"}
                       </td>
-                      <td className="px-3 py-2">
+                      <td>
                         <StatusBadge status={s.status as string} />
                       </td>
-                      <td className="px-3 py-2 text-sm text-gray-600">
+                      <td className="text-[var(--color-text-soft)]">
                         {new Date(s.criado_em as string).toLocaleDateString("pt-BR")}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="text-right">
                         <Link
                           href={`/solicitacoes/${s.id}`}
-                          className="text-sm text-blue-600 hover:text-blue-800"
+                          className="text-sm text-[var(--color-text-soft)] hover:text-[var(--color-text)]"
                         >
                           Ver
                         </Link>

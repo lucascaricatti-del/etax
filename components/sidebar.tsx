@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -39,14 +40,32 @@ export function Sidebar({
     router.refresh();
   }
 
+  const initials = userName
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[var(--sidebar-width)] bg-[var(--color-sidebar-bg)] text-[var(--color-sidebar-text)] flex flex-col z-40">
-      <div className="px-5 py-6 border-b border-white/10">
-        <h1 className="text-lg font-bold tracking-tight">Etax Ops</h1>
+    <aside className="fixed left-0 top-0 h-screen w-[var(--sidebar-width)] bg-[var(--color-sidebar-bg)] flex flex-col z-40">
+      {/* Logo + tagline */}
+      <div className="px-6 pt-7 pb-6 border-b border-[var(--color-sidebar-line)]">
+        <Image
+          src="/LOGO ETAX PNG-07.png"
+          alt="E-TAX"
+          width={100}
+          height={40}
+          className="h-8 w-auto brightness-0 invert"
+          priority
+        />
+        <p className="mt-2.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--color-sidebar-text)]">
+          Consultoria Tributária Empresarial
+        </p>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
-        <ul className="space-y-1">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-5 px-3">
+        <ul className="space-y-0.5">
           {navItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
@@ -54,10 +73,10 @@ export function Sidebar({
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`block px-3 py-2 rounded-[var(--radius-btn)] text-[13px] font-medium transition-colors ${
                     isActive
-                      ? "bg-[var(--color-sidebar-active)] text-white"
-                      : "hover:bg-[var(--color-sidebar-hover)]"
+                      ? "bg-white text-[var(--color-sidebar-bg)]"
+                      : "text-[var(--color-sidebar-text)] hover:text-[var(--color-sidebar-text-bright)] hover:bg-[var(--color-sidebar-card)]"
                   }`}
                 >
                   {item.label}
@@ -68,14 +87,30 @@ export function Sidebar({
         </ul>
       </nav>
 
-      <div className="px-4 py-4 border-t border-white/10">
-        <p className="text-xs text-white/60 truncate mb-2">{userName}</p>
-        <button
-          onClick={handleSignOut}
-          className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-sidebar-hover)] transition-colors"
-        >
-          Sair
-        </button>
+      {/* User footer */}
+      <div className="px-4 py-4 border-t border-[var(--color-sidebar-line)]">
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--color-sidebar-card)] border border-[var(--color-sidebar-line)] flex items-center justify-center">
+            <span className="text-xs font-semibold text-[var(--color-sidebar-text)]">
+              {initials}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-[var(--color-sidebar-text-bright)] truncate">
+              {userName}
+            </p>
+            <p className="text-[11px] text-[var(--color-sidebar-text)]">
+              {isEtax ? "Etax" : "Cliente"}
+            </p>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="text-[11px] font-medium text-[var(--color-sidebar-text)] hover:text-white transition-colors"
+            title="Sair"
+          >
+            Sair
+          </button>
+        </div>
       </div>
     </aside>
   );

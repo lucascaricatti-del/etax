@@ -83,11 +83,11 @@ export function ContratoForm({
 
   if (status === "success") {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
-        <h2 className="text-lg font-semibold text-green-800 mb-2">
+      <div className="rounded-[var(--radius-card)] border border-[var(--color-status-ok)] bg-[var(--color-status-ok-bg)] p-6 text-center">
+        <h2 className="text-lg font-semibold text-[var(--color-status-ok)] mb-2">
           Solicitação enviada!
         </h2>
-        <p className="text-green-700">
+        <p className="text-[var(--color-text-soft)]">
           Sua solicitação de contrato {tipoContrato.nome} foi recebida e será
           processada pela equipe jurídica.
         </p>
@@ -95,21 +95,18 @@ export function ContratoForm({
     );
   }
 
-  const selectClass =
-    "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
-
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {isEtax && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Empresa <span className="text-red-500 ml-0.5">*</span>
+          <label className="block text-sm font-medium text-[var(--color-text-soft)] mb-1">
+            Empresa <span className="text-[var(--color-status-danger)] ml-0.5">*</span>
           </label>
           <select
             required
             value={workspaceId}
             onChange={(e) => setWorkspaceId(e.target.value)}
-            className={selectClass}
+            className="etax-input"
           >
             <option value="">Selecione a empresa...</option>
             {workspaces.map((w) => (
@@ -132,7 +129,7 @@ export function ContratoForm({
       ))}
 
       {status === "error" && errorMessage && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-[var(--radius-btn)] border border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)] p-4 text-sm text-[var(--color-status-danger)]">
           {errorMessage}
         </div>
       )}
@@ -140,7 +137,7 @@ export function ContratoForm({
       <button
         type="submit"
         disabled={status === "loading"}
-        className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+        className="etax-btn etax-btn-primary w-full py-3"
       >
         {status === "loading" ? "Enviando..." : "Enviar solicitação"}
       </button>

@@ -108,33 +108,30 @@ export function NovaSolicitacaoForm({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+        className="etax-btn etax-btn-primary"
       >
         Nova solicitação
       </button>
     );
   }
 
-  const selectClass =
-    "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
-
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-lg border border-gray-200 p-5 space-y-4"
+      className="etax-card space-y-4"
     >
-      <h2 className="text-sm font-semibold">Nova solicitação</h2>
+      <h2 className="etax-section-label">Nova solicitação</h2>
 
       {isEtax && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Empresa <span className="text-red-500 ml-0.5">*</span>
+          <label className="block text-sm font-medium text-[var(--color-text-soft)] mb-1">
+            Empresa <span className="text-[var(--color-status-danger)] ml-0.5">*</span>
           </label>
           <select
             required
             value={workspaceId}
             onChange={(e) => setWorkspaceId(e.target.value)}
-            className={selectClass}
+            className="etax-input"
           >
             <option value="">Selecione a empresa...</option>
             {workspaces.map((w) => (
@@ -147,14 +144,14 @@ export function NovaSolicitacaoForm({
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Tipo de contrato <span className="text-red-500 ml-0.5">*</span>
+        <label className="block text-sm font-medium text-[var(--color-text-soft)] mb-1">
+          Tipo de contrato <span className="text-[var(--color-status-danger)] ml-0.5">*</span>
         </label>
         <select
           required
           value={tipoId}
           onChange={(e) => handleTipoChange(e.target.value)}
-          className={selectClass}
+          className="etax-input"
         >
           <option value="">Selecione o tipo...</option>
           {tipos.map((t) => (
@@ -177,7 +174,7 @@ export function NovaSolicitacaoForm({
         ))}
 
       {status === "error" && errorMessage && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-[var(--radius-btn)] border border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)] p-3 text-sm text-[var(--color-status-danger)]">
           {errorMessage}
         </div>
       )}
@@ -187,7 +184,7 @@ export function NovaSolicitacaoForm({
           <button
             type="submit"
             disabled={status === "loading"}
-            className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="etax-btn etax-btn-primary"
           >
             {status === "loading" ? "Enviando..." : "Enviar solicitação"}
           </button>
@@ -201,7 +198,7 @@ export function NovaSolicitacaoForm({
               setStatus("idle");
               setFieldErrors({});
             }}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="etax-btn etax-btn-ghost"
           >
             Cancelar
           </button>

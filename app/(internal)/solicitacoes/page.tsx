@@ -77,8 +77,13 @@ export default async function SolicitacoesPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Solicitações</h1>
+      <div className="mb-6">
+        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+          Solicitações
+        </h1>
+        <p className="mt-1 text-sm text-[var(--color-text-mute)]">
+          Acompanhamento de solicitações de contrato
+        </p>
       </div>
 
       <NovaSolicitacaoForm
@@ -99,66 +104,50 @@ export default async function SolicitacoesPage({
         empresaAtual={empresa}
       />
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 mt-4">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="etax-card mt-4 overflow-x-auto p-0">
+        <table className="etax-table">
+          <thead>
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Contraparte
-              </th>
-              {sessao?.isEtax && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Empresa
-                </th>
-              )}
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Tipo
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Status
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Data
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                Ação
-              </th>
+              <th>Contraparte</th>
+              {sessao?.isEtax && <th>Empresa</th>}
+              <th>Tipo</th>
+              <th>Status</th>
+              <th>Data</th>
+              <th className="text-right">Ação</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <tbody>
             {items.length === 0 ? (
               <tr>
                 <td
                   colSpan={sessao?.isEtax ? 6 : 5}
-                  className="px-4 py-8 text-center text-sm text-gray-500"
+                  className="!text-center !py-8 text-[var(--color-text-mute)]"
                 >
                   Nenhuma solicitação encontrada.
                 </td>
               </tr>
             ) : (
               items.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {s.contraparte?.nome ?? "—"}
-                  </td>
+                <tr key={s.id}>
+                  <td className="font-medium">{s.contraparte?.nome ?? "—"}</td>
                   {sessao?.isEtax && (
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="text-[var(--color-text-soft)]">
                       {s.workspace?.nome ?? "—"}
                     </td>
                   )}
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="text-[var(--color-text-soft)]">
                     {s.tipo_contrato?.nome ?? "—"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <StatusBadge status={s.status} />
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="text-[var(--color-text-soft)]">
                     {new Date(s.criado_em).toLocaleDateString("pt-BR")}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="text-right">
                     <Link
                       href={`/solicitacoes/${s.id}`}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                      className="text-sm font-medium text-[var(--color-text-soft)] hover:text-[var(--color-text)]"
                     >
                       Ver
                     </Link>

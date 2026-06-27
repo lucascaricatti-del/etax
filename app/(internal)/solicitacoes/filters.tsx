@@ -40,16 +40,13 @@ export function Filters({
     router.push(`/solicitacoes?${params.toString()}`);
   }
 
-  const selectClass =
-    "rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
-
   return (
     <div className="flex gap-3 flex-wrap">
       {isEtax && (
         <select
           value={empresaAtual ?? ""}
           onChange={(e) => handleChange("empresa", e.target.value)}
-          className={selectClass}
+          className="etax-input w-auto"
         >
           <option value="">Todas as empresas</option>
           {workspaces.map((w) => (
@@ -63,7 +60,7 @@ export function Filters({
       <select
         value={tipoAtual ?? ""}
         onChange={(e) => handleChange("tipo", e.target.value)}
-        className={selectClass}
+        className="etax-input w-auto"
       >
         <option value="">Todos os tipos</option>
         {tipos.map((t) => (
@@ -76,7 +73,7 @@ export function Filters({
       <select
         value={statusAtual ?? ""}
         onChange={(e) => handleChange("status", e.target.value)}
-        className={selectClass}
+        className="etax-input w-auto"
       >
         {STATUS_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
