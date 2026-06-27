@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root {
+  --sidebar-width: 240px;
+  --color-sidebar-bg: #1a1a2e;
+  --color-sidebar-text: #e2e8f0;
+  --color-sidebar-hover: #16213e;
+  --color-sidebar-active: #0f3460;
+  --color-accent: #e94560;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+}
