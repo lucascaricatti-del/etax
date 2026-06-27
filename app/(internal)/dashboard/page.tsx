@@ -1,101 +1,32 @@
 import Link from "next/link";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { redirect } from "next/navigation";
 import { formatBRL } from "@/lib/format";
+import { fetchDashboardData } from "@/lib/queries/contratos";
 
 export default async function DashboardPage() {
   const sessao = await getSessao();
   if (!sessao) redirect("/login");
 
-  const supabase = createAdminClient();
-  const isEtax = sessao.isEtax;
-  const wsIds = sessao.workspaceIds;
-
-  // Helpers para escopo: Etax vê tudo, cliente filtra por workspace
-  function scopedContratos() {
-    let q = supabase.from("contratos").select("id", { count: "exact", head: true });
-    if (!isEtax && wsIds.length > 0) q = q.in("workspace_id", wsIds);
-    else if (!isEtax) q = q.eq("workspace_id", "00000000-0000-0000-0000-000000000000");
-    return q;
-  }
+  const {
+    totalAtivos,
+    aguardandoAssinatura,
+    assinadosMes,
+    aVencer30,
+    aguardandoAprovacao,
+    recentes,
+    vencimentos,
+  } = await fetchDashboardData(sessao);
 
   const now = new Date();
-  const thirtyDaysFromNow = new Date(now);
-  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-  // Todas as queries em paralelo
-  const [
-    { count: totalAtivos },
-    { count: aguardandoAssinatura },
-    { count: assinadosMes },
-    { count: aVencer30 },
-    { count: aguardandoAprovacao },
-    { data: recentes },
-    { data: vencimentos },
-  ] = await Promise.all([
-    // KPI 1: contratos ativos (status_assinatura != expirado/recusado)
-    scopedContratos()
-      .not("status_assinatura", "in", "(recusado,expirado)"),
-
-    // KPI 2: aguardando assinatura
-    scopedContratos()
-      .eq("status_assinatura", "aguardando_assinatura"),
-
-    // KPI 3: assinados neste mês
-    scopedContratos()
-      .eq("status_assinatura", "assinado")
-      .gte("assinado_em", startOfMonth),
-
-    // KPI 4: a vencer em 30 dias
-    scopedContratos()
-      .not("vigencia_fim", "is", null)
-      .lte("vigencia_fim", thirtyDaysFromNow.toISOString())
-      .gte("vigencia_fim", now.toISOString()),
-
-    // Aguardando aprovação (só conta se Etax)
-    isEtax
-      ? supabase
-          .from("solicitacoes")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "aguardando_aprovacao")
-      : Promise.resolve({ count: 0 }),
-
-    // Contratos recentes (últimos 10)
-    (() => {
-      let q = supabase
-        .from("contratos")
-        .select("id, tipo, valor, status_assinatura, criado_em, assinado_em, contraparte:contrapartes(nome)")
-        .order("criado_em", { ascending: false })
-        .limit(10);
-      if (!isEtax && wsIds.length > 0) q = q.in("workspace_id", wsIds);
-      else if (!isEtax) q = q.eq("workspace_id", "00000000-0000-0000-0000-000000000000");
-      return q;
-    })(),
-
-    // Vencimentos próximos (30 dias)
-    (() => {
-      let q = supabase
-        .from("contratos")
-        .select("id, tipo, vigencia_fim, contraparte:contrapartes(nome)")
-        .not("vigencia_fim", "is", null)
-        .lte("vigencia_fim", thirtyDaysFromNow.toISOString())
-        .gte("vigencia_fim", now.toISOString())
-        .order("vigencia_fim", { ascending: true })
-        .limit(5);
-      if (!isEtax && wsIds.length > 0) q = q.in("workspace_id", wsIds);
-      else if (!isEtax) q = q.eq("workspace_id", "00000000-0000-0000-0000-000000000000");
-      return q;
-    })(),
-  ]);
+  const isEtax = sessao.isEtax;
 
   const kpis = [
-    { label: "Contratos ativos", value: totalAtivos ?? 0, color: "text-[var(--color-text)]" },
-    { label: "Aguardando assinatura", value: aguardandoAssinatura ?? 0, color: "text-[var(--color-status-warn)]" },
-    { label: "Assinados no mês", value: assinadosMes ?? 0, color: "text-[var(--color-status-ok)]" },
-    { label: "A vencer (30 dias)", value: aVencer30 ?? 0, color: (aVencer30 ?? 0) > 0 ? "text-[var(--color-status-danger)]" : "text-[var(--color-text-mute)]" },
+    { label: "Contratos ativos", value: totalAtivos, color: "text-[var(--color-text)]" },
+    { label: "Aguardando assinatura", value: aguardandoAssinatura, color: "text-[var(--color-status-warn)]" },
+    { label: "Assinados no mês", value: assinadosMes, color: "text-[var(--color-status-ok)]" },
+    { label: "A vencer (30 dias)", value: aVencer30, color: aVencer30 > 0 ? "text-[var(--color-status-danger)]" : "text-[var(--color-text-mute)]" },
   ];
 
   return (
@@ -119,7 +50,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Aguardando aprovação — só Etax */}
-      {isEtax && (aguardandoAprovacao ?? 0) > 0 && (
+      {isEtax && aguardandoAprovacao > 0 && (
         <Link
           href="/confeccao"
           className="block etax-card mb-6 border-l-4 border-[var(--color-status-warn)] hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
@@ -147,7 +78,7 @@ export default async function DashboardPage() {
             Contratos recentes
           </h2>
 
-          {!recentes || recentes.length === 0 ? (
+          {recentes.length === 0 ? (
             <div className="etax-card text-center py-8">
               <p className="text-sm text-[var(--color-text-mute)]">
                 Nenhum contrato ainda
@@ -195,7 +126,7 @@ export default async function DashboardPage() {
             Vencimentos próximos
           </h2>
 
-          {!vencimentos || vencimentos.length === 0 ? (
+          {vencimentos.length === 0 ? (
             <div className="etax-card text-center py-8">
               <p className="text-sm text-[var(--color-text-mute)]">
                 Nenhum vencimento nos próximos 30 dias

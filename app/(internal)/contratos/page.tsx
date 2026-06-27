@@ -1,38 +1,14 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { redirect } from "next/navigation";
 import { formatBRL } from "@/lib/format";
+import { fetchContratos } from "@/lib/queries/contratos";
 
 export default async function ContratosPage() {
   const sessao = await getSessao();
   if (!sessao) redirect("/login");
 
-  const supabase = createAdminClient();
-
-  let query = supabase
-    .from("contratos")
-    .select(
-      "id, tipo, valor, status_assinatura, status_vigencia, vigencia_inicio, vigencia_fim, assinado_em, criado_em, pdf_assinado_path, workspace_id, contraparte:contrapartes(nome, cpf_cnpj)"
-    )
-    .order("criado_em", { ascending: false });
-
-  // Cliente só vê contratos do seu workspace
-  if (!sessao.isEtax) {
-    if (sessao.workspaceIds.length === 0) {
-      query = query.eq("workspace_id", "00000000-0000-0000-0000-000000000000");
-    } else if (sessao.workspaceIds.length === 1) {
-      query = query.eq("workspace_id", sessao.workspaceIds[0]);
-    } else {
-      query = query.in("workspace_id", sessao.workspaceIds);
-    }
-  }
-
-  const { data: contratos, error } = await query;
-
-  if (error) {
-    console.error("[Contratos] Erro na query:", error);
-  }
+  const { data: contratos } = await fetchContratos(sessao);
 
   const total = contratos?.length ?? 0;
 
@@ -115,7 +91,14 @@ export default async function ContratosPage() {
                   )}
 
                   {c.pdf_assinado_path && (
-                    <PdfDownloadLink contratoId={c.id} />
+                    <a
+                      href={`/api/contratos/${c.id}/pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[var(--color-primary)] hover:underline font-medium"
+                    >
+                      Baixar PDF assinado
+                    </a>
                   )}
                 </div>
               </div>
@@ -124,18 +107,5 @@ export default async function ContratosPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function PdfDownloadLink({ contratoId }: { contratoId: string }) {
-  return (
-    <a
-      href={`/api/contratos/${contratoId}/pdf`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-[var(--color-primary)] hover:underline font-medium"
-    >
-      Baixar PDF assinado
-    </a>
   );
 }

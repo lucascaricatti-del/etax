@@ -1,49 +1,18 @@
 import Link from "next/link";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { redirect } from "next/navigation";
 import { formatBRL } from "@/lib/format";
+import { fetchContratosPorAssinatura } from "@/lib/queries/contratos";
 
 export default async function AssinaturasPage() {
   const sessao = await getSessao();
   if (!sessao) redirect("/login");
   if (!sessao.isEtax) redirect("/solicitacoes");
 
-  const supabase = createAdminClient();
+  const { pendentes, finalizados } = await fetchContratosPorAssinatura(sessao);
 
-  // Aguardando assinatura
-  const { data: pendentes, error: errPendentes } = await supabase
-    .from("contratos")
-    .select(
-      "id, status_assinatura, tipo, valor, criado_em, clicksign_envelope_id, contraparte:contrapartes(nome, cpf_cnpj)"
-    )
-    .eq("status_assinatura", "aguardando_assinatura")
-    .order("criado_em", { ascending: true });
-
-  if (errPendentes) {
-    console.error("[Assinaturas] Erro pendentes:", errPendentes);
-  }
-
-  // Finalizados (assinado, recusado, expirado) — últimos 30 dias
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const { data: finalizados, error: errFinalizados } = await supabase
-    .from("contratos")
-    .select(
-      "id, status_assinatura, tipo, valor, assinado_em, criado_em, contraparte:contrapartes(nome, cpf_cnpj)"
-    )
-    .in("status_assinatura", ["assinado", "recusado", "expirado"])
-    .gte("criado_em", thirtyDaysAgo.toISOString())
-    .order("criado_em", { ascending: false })
-    .limit(50);
-
-  if (errFinalizados) {
-    console.error("[Assinaturas] Erro finalizados:", errFinalizados);
-  }
-
-  const pendingCount = pendentes?.length ?? 0;
+  const pendingCount = pendentes.data?.length ?? 0;
 
   return (
     <div>
@@ -52,7 +21,7 @@ export default async function AssinaturasPage() {
           Assinaturas
         </h1>
         {pendingCount > 0 && (
-          <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-[var(--color-status-warning-bg)] text-[var(--color-status-warning)] text-sm font-bold">
+          <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-[var(--color-status-warn-bg)] text-[var(--color-status-warn)] text-sm font-bold">
             {pendingCount}
           </span>
         )}
@@ -73,7 +42,7 @@ export default async function AssinaturasPage() {
           </div>
         ) : (
           <div className="grid gap-3">
-            {pendentes!.map((c) => {
+            {pendentes.data!.map((c) => {
               const contraparte = c.contraparte as unknown as { nome: string; cpf_cnpj: string } | null;
 
               return (
@@ -111,14 +80,14 @@ export default async function AssinaturasPage() {
       </section>
 
       {/* Finalizados */}
-      {finalizados && finalizados.length > 0 && (
+      {finalizados.data && finalizados.data.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-4">
             Finalizados recentemente
           </h2>
 
           <div className="grid gap-3">
-            {finalizados.map((c) => {
+            {finalizados.data.map((c) => {
               const contraparte = c.contraparte as unknown as { nome: string; cpf_cnpj: string } | null;
 
               return (
