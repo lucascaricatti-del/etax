@@ -152,26 +152,47 @@ export async function POST(
 
     // --- Persistir no banco ---
 
-    // Inserir registro em contratos
-    const { error: errContrato } = await supabase.from("contratos").insert({
+    // Parse valor_total para numeric (strip tudo que não é dígito)
+    let valorNumeric: number | null = null;
+    if (solicitacao.dados.valor_total != null && solicitacao.dados.valor_total !== "") {
+      const digits = String(solicitacao.dados.valor_total).replace(/\D/g, "");
+      if (digits) valorNumeric = parseInt(digits, 10);
+    }
+
+    const insertPayload = {
       solicitacao_id: id,
       contraparte_id: contraparte.id,
       tipo: tipoContrato.nome,
-      valor: solicitacao.dados.valor_total || null,
+      valor: valorNumeric,
       status_assinatura: "aguardando_assinatura",
       status_vigencia: "pendente",
       clicksign_envelope_id: envelopeId,
       workspace_id: solicitacao.workspace_id,
-    });
+    };
+
+    console.log("[GerarContrato] Insert payload contratos:", JSON.stringify(insertPayload, null, 2));
+
+    const { error: errContrato } = await supabase
+      .from("contratos")
+      .insert(insertPayload);
 
     if (errContrato) {
-      console.error("[GerarContrato] Erro ao inserir contrato:", errContrato);
-      // Contrato criado na ClickSign mas falhou no banco — log mas não reverte
+      console.error("[GerarContrato] Erro ao inserir contrato:", {
+        message: errContrato.message,
+        details: errContrato.details,
+        hint: errContrato.hint,
+        code: errContrato.code,
+      });
       return NextResponse.json(
         {
           error: "Contrato criado na ClickSign mas falhou ao salvar no banco",
           clicksign_envelope_id: envelopeId,
-          detail: errContrato.message,
+          supabase_error: {
+            message: errContrato.message,
+            details: errContrato.details,
+            hint: errContrato.hint,
+            code: errContrato.code,
+          },
         },
         { status: 500 }
       );
