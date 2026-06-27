@@ -59,7 +59,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ url: signedUrl.signedUrl });
+    return NextResponse.redirect(signedUrl.signedUrl);
   } catch (err) {
     console.error("[PDF] Erro:", err);
     const message = err instanceof Error ? err.message : "Erro interno";
