@@ -25,9 +25,13 @@ const CLIENTE_NAV = [
 export function Sidebar({
   userName,
   isEtax,
+  isAdmin,
+  pendingApprovals,
 }: {
   userName: string;
   isEtax: boolean;
+  isAdmin: boolean;
+  pendingApprovals: number;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -73,13 +77,18 @@ export function Sidebar({
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`block px-3 py-2 rounded-[var(--radius-btn)] text-[13px] font-medium transition-colors ${
+                  className={`flex items-center justify-between px-3 py-2 rounded-[var(--radius-btn)] text-[13px] font-medium transition-colors ${
                     isActive
                       ? "bg-white text-[var(--color-sidebar-bg)]"
                       : "text-[var(--color-sidebar-text)] hover:text-[var(--color-sidebar-text-bright)] hover:bg-[var(--color-sidebar-card)]"
                   }`}
                 >
                   {item.label}
+                  {item.href === "/confeccao" && pendingApprovals > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--color-status-warning)] text-[10px] font-bold text-white">
+                      {pendingApprovals}
+                    </span>
+                  )}
                 </Link>
               </li>
             );
@@ -100,7 +109,7 @@ export function Sidebar({
               {userName}
             </p>
             <p className="text-[11px] text-[var(--color-sidebar-text)]">
-              {isEtax ? "Etax" : "Cliente"}
+              {isEtax ? (isAdmin ? "Etax · Admin" : "Etax") : "Cliente"}
             </p>
           </div>
           <button

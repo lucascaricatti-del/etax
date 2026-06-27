@@ -62,6 +62,10 @@ export interface Solicitacao {
   status: string;
   dados: Record<string, unknown>;
   observacoes: string | null;
+  modelo_id: string | null;
+  aprovado_por: string | null;
+  aprovado_em: string | null;
+  motivo_reprovacao: string | null;
   criado_em: string;
   atualizado_em: string;
 }
@@ -69,6 +73,7 @@ export interface Solicitacao {
 export interface SolicitacaoComDetalhes extends Solicitacao {
   contraparte: Contraparte;
   tipo_contrato: TipoContrato;
+  modelo?: Modelo | null;
 }
 
 export interface Modelo {
@@ -80,4 +85,6 @@ export interface Modelo {
   ativo: boolean;
   criado_em: string;
   workspace_id: string | null;
+  nome: string | null;
+  descricao: string | null;
 }

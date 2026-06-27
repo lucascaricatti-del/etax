@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { GerarContratoButton } from "./gerar-contrato-button";
+import { EnviarAprovacaoButton } from "./enviar-aprovacao-button";
+import { AprovarReprovarButtons } from "./aprovar-reprovar-buttons";
 import { DadosEditor } from "./dados-editor";
 import { ContraparteEditor } from "./contraparte-editor";
 import type { SolicitacaoComDetalhes, CampoSchema } from "@/lib/types";
@@ -19,7 +21,9 @@ export default async function SolicitacaoDetalhePage({
 
   const { data } = await supabase
     .from("solicitacoes")
-    .select("*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*)")
+    .select(
+      "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), modelo:modelos(id, nome, descricao, versao)"
+    )
     .eq("id", id)
     .single();
 
@@ -41,6 +45,14 @@ export default async function SolicitacaoDetalhePage({
     "—";
   const signerEmail = (s.dados.email as string) || null;
 
+  // Action buttons by status + role
+  const showEnviarAprovacao =
+    (sessao?.isEtax ?? false) && ["nova", "em_confeccao"].includes(s.status);
+  const showAprovarReprovar =
+    (sessao?.isAdmin ?? false) && s.status === "aguardando_aprovacao";
+  const showGerarContrato =
+    (sessao?.isEtax ?? false) && s.status === "aprovada";
+
   return (
     <div>
       <Link
@@ -50,12 +62,24 @@ export default async function SolicitacaoDetalhePage({
         &larr; Voltar para solicitações
       </Link>
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
         <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
           Solicitação
         </h1>
         <StatusBadge status={s.status} />
-        {canEdit && (
+        {showEnviarAprovacao && (
+          <EnviarAprovacaoButton
+            solicitacaoId={s.id}
+            tipoContratoId={s.tipo_contrato_id}
+            workspaceId={s.workspace_id}
+            signerNome={signerNome}
+            signerEmail={signerEmail}
+          />
+        )}
+        {showAprovarReprovar && (
+          <AprovarReprovarButtons solicitacaoId={s.id} />
+        )}
+        {showGerarContrato && (
           <GerarContratoButton
             solicitacaoId={s.id}
             signerNome={signerNome}
@@ -101,6 +125,28 @@ export default async function SolicitacaoDetalhePage({
                 })}
               </dd>
             </div>
+            {s.modelo && (
+              <div>
+                <dt className="text-[var(--color-text-mute)]">Modelo selecionado</dt>
+                <dd className="font-medium">
+                  {s.modelo.nome || `Modelo v${s.modelo.versao}`}
+                </dd>
+              </div>
+            )}
+            {s.aprovado_em && (
+              <div>
+                <dt className="text-[var(--color-text-mute)]">Data de aprovação</dt>
+                <dd className="font-medium">
+                  {new Date(s.aprovado_em).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </dd>
+              </div>
+            )}
           </dl>
         </div>
 
@@ -111,6 +157,16 @@ export default async function SolicitacaoDetalhePage({
           schema={schema}
           canEdit={canEdit}
         />
+
+        {/* Motivo da reprovação */}
+        {s.motivo_reprovacao && s.status === "em_confeccao" && (
+          <div className="etax-card md:col-span-2 border-l-4 border-[var(--color-status-danger)]">
+            <h2 className="etax-section-label text-[var(--color-status-danger)]">
+              Motivo da reprovação
+            </h2>
+            <p className="text-sm whitespace-pre-wrap">{s.motivo_reprovacao}</p>
+          </div>
+        )}
 
         {/* Observações */}
         {s.observacoes && (

@@ -3,8 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface Sessao {
   user: { id: string; email?: string };
-  profile: { id: string; nome: string | null; tipo_usuario: string } | null;
+  profile: { id: string; nome: string | null; tipo_usuario: string; papel_etax: string | null } | null;
   isEtax: boolean;
+  isAdmin: boolean;
   workspaceIds: string[];
 }
 
@@ -23,11 +24,12 @@ export async function getSessao(): Promise<Sessao | null> {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("id, nome, tipo_usuario")
+    .select("id, nome, tipo_usuario, papel_etax")
     .eq("id", user.id)
     .single();
 
   const isEtax = profile?.tipo_usuario === "etax";
+  const isAdmin = isEtax && profile?.papel_etax === "admin";
 
   const { data: memberships } = await admin
     .from("workspace_members")
@@ -42,6 +44,7 @@ export async function getSessao(): Promise<Sessao | null> {
     user: { id: user.id, email: user.email },
     profile,
     isEtax,
+    isAdmin,
     workspaceIds,
   };
 }

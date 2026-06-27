@@ -46,10 +46,10 @@ export async function POST(
       );
     }
 
-    // Só gera se status for 'nova' ou 'em_confeccao'
-    if (!["nova", "em_confeccao"].includes(solicitacao.status)) {
+    // Só gera se status for 'aprovada'
+    if (solicitacao.status !== "aprovada") {
       return NextResponse.json(
-        { error: `Solicitação com status '${solicitacao.status}' não pode gerar contrato` },
+        { error: `Solicitação com status '${solicitacao.status}' não pode gerar contrato. É necessário aprovação.` },
         { status: 400 }
       );
     }
@@ -64,26 +64,26 @@ export async function POST(
       );
     }
 
-    // 2. Buscar modelo ativo — preferir workspace-specific, senão padrão (null)
-    const { data: modelos } = await supabase
-      .from("modelos")
-      .select("*")
-      .eq("tipo_contrato_id", tipoContrato.id)
-      .eq("ativo", true)
-      .order("workspace_id", { ascending: false, nullsFirst: false });
-
-    if (!modelos || modelos.length === 0) {
+    // 2. Usar modelo pré-selecionado na aprovação
+    if (!solicitacao.modelo_id) {
       return NextResponse.json(
-        { error: "Nenhum modelo ativo para este tipo de contrato" },
+        { error: "Modelo não selecionado. Envie para aprovação primeiro." },
         { status: 400 }
       );
     }
 
-    // Preferir modelo do workspace, senão o padrão (workspace_id = null)
-    const modelo =
-      modelos.find((m) => m.workspace_id === solicitacao.workspace_id) ||
-      modelos.find((m) => m.workspace_id === null) ||
-      modelos[0];
+    const { data: modelo, error: errModelo } = await supabase
+      .from("modelos")
+      .select("*")
+      .eq("id", solicitacao.modelo_id)
+      .single();
+
+    if (errModelo || !modelo) {
+      return NextResponse.json(
+        { error: "Modelo selecionado não encontrado" },
+        { status: 400 }
+      );
+    }
 
     console.log("[GerarContrato] Modelo selecionado:", {
       id: modelo.id,
