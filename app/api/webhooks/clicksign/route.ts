@@ -114,36 +114,68 @@ export async function POST(request: Request) {
   const eventName = event?.name ?? "unknown";
   const documentKey = document?.key ?? null;
 
+  // Log do payload completo para diagnóstico
+  const envelope = payload.envelope as
+    | { id?: string; key?: string }
+    | undefined;
+  const envelopeId = envelope?.id ?? envelope?.key ?? null;
+
   console.log("[Webhook ClickSign] Evento recebido:", {
     event: eventName,
     document_key: documentKey,
+    envelope_id: envelopeId,
     occurred_at: event?.occurred_at,
+    payload_keys: Object.keys(payload),
   });
+  console.log("[Webhook ClickSign] Payload completo:", JSON.stringify(payload));
 
-  if (!documentKey) {
-    console.warn("[Webhook ClickSign] Evento sem document.key, ignorando");
+  if (!documentKey && !envelopeId) {
+    console.warn("[Webhook ClickSign] Evento sem document.key nem envelope.id, ignorando");
     return NextResponse.json({ received: true });
   }
 
   const supabase = createAdminClient();
 
-  // 4. Buscar contrato pelo envelope_id (= document.key da ClickSign)
-  const { data: contrato } = await supabase
-    .from("contratos")
-    .select("id, solicitacao_id, status_assinatura")
-    .eq("clicksign_envelope_id", documentKey)
-    .maybeSingle();
+  // 4. Buscar contrato — tentar por document_key primeiro, depois por envelope_id
+  let contrato: { id: string; solicitacao_id: string | null; status_assinatura: string } | null = null;
+
+  if (documentKey) {
+    const { data } = await supabase
+      .from("contratos")
+      .select("id, solicitacao_id, status_assinatura")
+      .eq("clicksign_document_key", documentKey)
+      .maybeSingle();
+    contrato = data;
+  }
+
+  if (!contrato && envelopeId) {
+    const { data } = await supabase
+      .from("contratos")
+      .select("id, solicitacao_id, status_assinatura")
+      .eq("clicksign_envelope_id", envelopeId)
+      .maybeSingle();
+    contrato = data;
+  }
+
+  // Fallback: tentar document_key contra envelope_id (contratos antigos sem document_key)
+  if (!contrato && documentKey) {
+    const { data } = await supabase
+      .from("contratos")
+      .select("id, solicitacao_id, status_assinatura")
+      .eq("clicksign_envelope_id", documentKey)
+      .maybeSingle();
+    contrato = data;
+  }
 
   // 5. Idempotência: verificar se este evento já foi processado
-  // Usa combinação de envelope_id + evento como chave de deduplicação
-  // (ClickSign pode não enviar um event_id único — usamos occurred_at como discriminador)
   const clicksignEventId =
     (event?.occurred_at as string) || new Date().toISOString();
+  const dedupKey = documentKey || envelopeId!;
 
   const { data: existing } = await supabase
     .from("eventos_assinatura")
     .select("id")
-    .eq("envelope_id", documentKey)
+    .eq("envelope_id", dedupKey)
     .eq("evento", eventName)
     .eq("clicksign_event_id", clicksignEventId)
     .maybeSingle();
@@ -156,7 +188,7 @@ export async function POST(request: Request) {
   // 6. Registrar evento em eventos_assinatura
   const { error: errEvento } = await supabase.from("eventos_assinatura").insert({
     contrato_id: contrato?.id ?? null,
-    envelope_id: documentKey,
+    envelope_id: dedupKey,
     evento: eventName,
     clicksign_event_id: clicksignEventId,
     payload,

@@ -171,6 +171,7 @@ export async function POST(
       status_assinatura: "aguardando_assinatura" as const,
       // status_vigencia omitido — default do banco é "vigente"
       clicksign_envelope_id: envelopeId,
+      clicksign_document_key: documentId,
       workspace_id: solicitacao.workspace_id,
     };
 
