@@ -1,3 +1,5 @@
-export default function DashboardPage() {
-  return <h1 className="text-2xl font-bold">Dashboard</h1>;
+import { redirect } from "next/navigation";
+
+export default function RootPage() {
+  redirect("/login");
 }
