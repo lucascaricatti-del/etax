@@ -166,10 +166,10 @@ export async function POST(
     const insertPayload = {
       solicitacao_id: id,
       contraparte_id: contraparte.id,
-      tipo: tipoContrato.nome,
+      tipo: tipoContrato.slug,
       valor: valorNumeric,
-      status_assinatura: "aguardando_assinatura",
-      status_vigencia: "pendente",
+      status_assinatura: "aguardando_assinatura" as const,
+      // status_vigencia omitido — default do banco é "vigente"
       clicksign_envelope_id: envelopeId,
       workspace_id: solicitacao.workspace_id,
     };
