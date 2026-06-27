@@ -1,25 +1,22 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getSessao } from "@/lib/auth";
 import { Sidebar } from "@/components/sidebar";
-import "../globals.css";
 
-export const metadata: Metadata = {
-  title: "Etax Ops",
-  description: "Sistema operacional Etax",
-};
-
-export default function InternalLayout({
+export default async function InternalLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const sessao = await getSessao();
+  if (!sessao) redirect("/login");
+
   return (
-    <html lang="pt-BR" className="h-full">
-      <body className="h-full flex">
-        <Sidebar />
-        <main className="flex-1 ml-[var(--sidebar-width)] p-8">
-          {children}
-        </main>
-      </body>
-    </html>
+    <div className="flex h-full">
+      <Sidebar
+        userName={sessao.profile?.nome ?? sessao.user.email ?? "Usuário"}
+        isEtax={sessao.isEtax}
+      />
+      <main className="flex-1 ml-[var(--sidebar-width)] p-8">{children}</main>
+    </div>
   );
 }
