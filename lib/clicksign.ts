@@ -18,6 +18,23 @@ const TOKEN = () => process.env.CLICKSIGN_TOKEN!;
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Gera filename seguro para a ClickSign: sem acentos, sem caracteres especiais,
+ * apenas letras/números/hífens, com extensão .docx.
+ *
+ * Exemplo: "Club — VITALITÀ COMÉRCIO" → "club-vitalita-comercio.docx"
+ */
+export function slugifyFilename(raw: string): string {
+  const slug = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-") // tudo que não é alfanumérico vira hífen
+    .replace(/^-+|-+$/g, "") // trim hífens nas pontas
+    .replace(/-{2,}/g, "-"); // colapsa hífens consecutivos
+  return `${slug || "documento"}.docx`;
+}
+
 export function toTemplateData(
   dados: Record<string, unknown>
 ): Record<string, string> {

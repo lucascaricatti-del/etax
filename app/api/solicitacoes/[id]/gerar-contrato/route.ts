@@ -8,6 +8,7 @@ import {
   addSigner,
   addRequirement,
   activateEnvelope,
+  slugifyFilename,
 } from "@/lib/clicksign";
 import { formatValorClickSign } from "@/lib/format";
 
@@ -100,7 +101,9 @@ export async function POST(
     }
     const templateData = toTemplateData(dadosForClickSign);
     const envelopeName = `${tipoContrato.nome} — ${contraparte.nome}`;
-    const filename = `${tipoContrato.slug || tipoContrato.nome}_${contraparte.nome.replace(/\s+/g, "_")}.pdf`;
+    const filename = slugifyFilename(
+      `${tipoContrato.slug || tipoContrato.nome}-${contraparte.nome}`
+    );
 
     console.log("[GerarContrato] Iniciando fluxo ClickSign...");
 
