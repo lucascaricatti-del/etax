@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessao } from "@/lib/auth";
+import { normalizeDados } from "@/lib/masks";
 
 export async function POST(request: Request) {
   try {
@@ -57,13 +58,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate required fields from schema
+    // Normalizar dados para forma canônica antes de validar/salvar
     const schema = tipo.schema_campos as Array<{
       key: string;
+      type?: string;
       required: boolean;
     }>;
+    const dadosNormalizados = normalizeDados(dados, schema);
+
     const missing = schema
-      .filter((c) => c.required && !dados[c.key])
+      .filter((c) => {
+        const v = dadosNormalizados[c.key];
+        return c.required && (v == null || v === "" || v === 0);
+      })
       .map((c) => c.key);
 
     if (missing.length > 0) {
@@ -74,9 +81,9 @@ export async function POST(request: Request) {
     }
 
     // Resolve contraparte — PJ se tem cnpj, PF se tem cpf
-    const isPJ = Boolean(dados.cnpj);
-    const doc: string | null = (isPJ ? dados.cnpj : dados.cpf) || null;
-    const nomeContraparte = isPJ ? dados.razao_social : dados.nome;
+    const isPJ = Boolean(dadosNormalizados.cnpj);
+    const doc: string | null = (isPJ ? dadosNormalizados.cnpj : dadosNormalizados.cpf) as string | null;
+    const nomeContraparte = isPJ ? dadosNormalizados.razao_social : dadosNormalizados.nome;
     const tipoPessoa = isPJ ? "PJ" : "PF";
 
     let contraparteId: string;
@@ -99,8 +106,8 @@ export async function POST(request: Request) {
             nome: nomeContraparte,
             cpf_cnpj: doc,
             tipo_pessoa: tipoPessoa,
-            email: dados.email || null,
-            telefone: dados.whatsapp || null,
+            email: dadosNormalizados.email || null,
+            telefone: dadosNormalizados.whatsapp || null,
             workspace_id: resolvedWorkspaceId,
           })
           .select("id")
@@ -122,8 +129,8 @@ export async function POST(request: Request) {
           nome: nomeContraparte,
           cpf_cnpj: null,
           tipo_pessoa: tipoPessoa,
-          email: dados.email || null,
-          telefone: dados.whatsapp || null,
+          email: dadosNormalizados.email || null,
+          telefone: dadosNormalizados.whatsapp || null,
           workspace_id: resolvedWorkspaceId,
         })
         .select("id")
@@ -147,7 +154,7 @@ export async function POST(request: Request) {
         workspace_id: resolvedWorkspaceId,
         solicitante_id: sessao.user.id,
         status: "nova",
-        dados,
+        dados: dadosNormalizados,
       })
       .select("id")
       .single();

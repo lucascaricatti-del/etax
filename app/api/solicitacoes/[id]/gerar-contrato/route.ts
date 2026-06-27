@@ -10,7 +10,7 @@ import {
   activateEnvelope,
   slugifyFilename,
 } from "@/lib/clicksign";
-import { formatValorClickSign } from "@/lib/format";
+import { formatDadosForClickSign } from "@/lib/masks";
 
 export async function POST(
   _request: Request,
@@ -92,13 +92,9 @@ export async function POST(
     });
 
     // 3. Preparar dados do template (keys minúsculas → MAIÚSCULAS)
-    // Formatar valor_total como moeda (ex: 15000000 → "150.000,00")
-    const dadosForClickSign = { ...solicitacao.dados };
-    if (dadosForClickSign.valor_total) {
-      dadosForClickSign.valor_total = formatValorClickSign(
-        dadosForClickSign.valor_total
-      );
-    }
+    // Formatar valores canônicos para display legível (BRL sem R$, CNPJ com máscara, etc.)
+    const schemaForFormat = (tipoContrato.schema_campos ?? []) as Array<{ key: string; type?: string }>;
+    const dadosForClickSign = formatDadosForClickSign(solicitacao.dados, schemaForFormat);
     const templateData = toTemplateData(dadosForClickSign);
     const envelopeName = `${tipoContrato.nome} — ${contraparte.nome}`;
     const filename = slugifyFilename(
@@ -152,11 +148,17 @@ export async function POST(
 
     // --- Persistir no banco ---
 
-    // Parse valor_total para numeric (strip tudo que não é dígito)
+    // valor_total canônico: number (reais) ou string legada
     let valorNumeric: number | null = null;
-    if (solicitacao.dados.valor_total != null && solicitacao.dados.valor_total !== "") {
-      const digits = String(solicitacao.dados.valor_total).replace(/\D/g, "");
-      if (digits) valorNumeric = parseInt(digits, 10);
+    const rawValor = solicitacao.dados.valor_total;
+    if (rawValor != null && rawValor !== "") {
+      if (typeof rawValor === "number") {
+        valorNumeric = rawValor;
+      } else {
+        // String legada — extrair dígitos e converter centavos → reais
+        const digits = String(rawValor).replace(/\D/g, "");
+        if (digits) valorNumeric = parseInt(digits, 10) / 100;
+      }
     }
 
     const insertPayload = {

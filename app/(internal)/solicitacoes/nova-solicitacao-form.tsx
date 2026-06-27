@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CampoSchema } from "@/lib/types";
+import { CampoInput, validateForm } from "@/components/campo-input";
 
 interface TipoOption {
   id: string;
@@ -25,25 +26,46 @@ export function NovaSolicitacaoForm({
   const [open, setOpen] = useState(false);
   const [tipoId, setTipoId] = useState("");
   const [workspaceId, setWorkspaceId] = useState("");
-  const [dados, setDados] = useState<Record<string, string>>({});
+  const [dados, setDados] = useState<Record<string, string | number>>({});
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const tipoSelecionado = tipos.find((t) => t.id === tipoId);
 
   function handleTipoChange(id: string) {
     setTipoId(id);
     setDados({});
+    setFieldErrors({});
   }
 
-  function handleFieldChange(key: string, value: string) {
+  function handleFieldChange(key: string, value: string | number) {
     setDados((prev) => ({ ...prev, [key]: value }));
+    if (fieldErrors[key]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (tipoSelecionado) {
+      const errors = validateForm(dados, tipoSelecionado.schema_campos);
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        setStatus("error");
+        setErrorMessage("Corrija os campos destacados.");
+        return;
+      }
+    }
+
     setStatus("loading");
     setErrorMessage("");
+    setFieldErrors({});
 
     const resolvedWorkspaceId = isEtax ? workspaceId : defaultWorkspaceId;
     if (!resolvedWorkspaceId) {
@@ -68,7 +90,6 @@ export function NovaSolicitacaoForm({
         throw new Error(body.error || "Erro ao criar solicitação");
       }
 
-      // Reset and close
       setTipoId("");
       setWorkspaceId("");
       setDados({});
@@ -94,7 +115,7 @@ export function NovaSolicitacaoForm({
     );
   }
 
-  const baseClass =
+  const selectClass =
     "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
 
   return (
@@ -113,7 +134,7 @@ export function NovaSolicitacaoForm({
             required
             value={workspaceId}
             onChange={(e) => setWorkspaceId(e.target.value)}
-            className={baseClass}
+            className={selectClass}
           >
             <option value="">Selecione a empresa...</option>
             {workspaces.map((w) => (
@@ -133,7 +154,7 @@ export function NovaSolicitacaoForm({
           required
           value={tipoId}
           onChange={(e) => handleTipoChange(e.target.value)}
-          className={baseClass}
+          className={selectClass}
         >
           <option value="">Selecione o tipo...</option>
           {tipos.map((t) => (
@@ -146,15 +167,16 @@ export function NovaSolicitacaoForm({
 
       {tipoSelecionado &&
         tipoSelecionado.schema_campos.map((campo) => (
-          <FieldInput
+          <CampoInput
             key={campo.key}
             campo={campo}
-            value={dados[campo.key] ?? ""}
+            value={dados[campo.key]}
             onChange={(v) => handleFieldChange(campo.key, v)}
+            error={fieldErrors[campo.key]}
           />
         ))}
 
-      {status === "error" && (
+      {status === "error" && errorMessage && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {errorMessage}
         </div>
@@ -177,6 +199,7 @@ export function NovaSolicitacaoForm({
               setDados({});
               setWorkspaceId("");
               setStatus("idle");
+              setFieldErrors({});
             }}
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
@@ -185,52 +208,5 @@ export function NovaSolicitacaoForm({
         </div>
       )}
     </form>
-  );
-}
-
-function FieldInput({
-  campo,
-  value,
-  onChange,
-}: {
-  campo: CampoSchema;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const baseClass =
-    "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {campo.label}
-        {campo.required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-
-      {campo.type === "select" ? (
-        <select
-          required={campo.required}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={baseClass}
-        >
-          <option value="">Selecione...</option>
-          {campo.options?.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={campo.type}
-          required={campo.required}
-          placeholder={campo.placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={baseClass}
-        />
-      )}
-    </div>
   );
 }

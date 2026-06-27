@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { CampoSchema, TipoContrato } from "@/lib/types";
+import type { TipoContrato } from "@/lib/types";
+import { CampoInput, validateForm } from "@/components/campo-input";
 
 export function ContratoForm({
   tipoContrato,
@@ -14,21 +15,39 @@ export function ContratoForm({
   workspaces: Array<{ id: string; nome: string }>;
   defaultWorkspaceId: string | null;
 }) {
-  const [dados, setDados] = useState<Record<string, string>>({});
+  const [dados, setDados] = useState<Record<string, string | number>>({});
   const [workspaceId, setWorkspaceId] = useState(defaultWorkspaceId ?? "");
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  function handleChange(key: string, value: string) {
+  function handleChange(key: string, value: string | number) {
     setDados((prev) => ({ ...prev, [key]: value }));
+    if (fieldErrors[key]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    const errors = validateForm(dados, tipoContrato.schema_campos);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setStatus("error");
+      setErrorMessage("Corrija os campos destacados.");
+      return;
+    }
+
     setStatus("loading");
     setErrorMessage("");
+    setFieldErrors({});
 
     const resolvedWorkspaceId = isEtax ? workspaceId : defaultWorkspaceId;
     if (!resolvedWorkspaceId) {
@@ -76,7 +95,7 @@ export function ContratoForm({
     );
   }
 
-  const baseClass =
+  const selectClass =
     "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
 
   return (
@@ -90,7 +109,7 @@ export function ContratoForm({
             required
             value={workspaceId}
             onChange={(e) => setWorkspaceId(e.target.value)}
-            className={baseClass}
+            className={selectClass}
           >
             <option value="">Selecione a empresa...</option>
             {workspaces.map((w) => (
@@ -103,15 +122,16 @@ export function ContratoForm({
       )}
 
       {tipoContrato.schema_campos.map((campo) => (
-        <FieldInput
+        <CampoInput
           key={campo.key}
           campo={campo}
-          value={dados[campo.key] ?? ""}
+          value={dados[campo.key]}
           onChange={(v) => handleChange(campo.key, v)}
+          error={fieldErrors[campo.key]}
         />
       ))}
 
-      {status === "error" && (
+      {status === "error" && errorMessage && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {errorMessage}
         </div>
@@ -125,52 +145,5 @@ export function ContratoForm({
         {status === "loading" ? "Enviando..." : "Enviar solicitação"}
       </button>
     </form>
-  );
-}
-
-function FieldInput({
-  campo,
-  value,
-  onChange,
-}: {
-  campo: CampoSchema;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const baseClass =
-    "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {campo.label}
-        {campo.required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-
-      {campo.type === "select" ? (
-        <select
-          required={campo.required}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={baseClass}
-        >
-          <option value="">Selecione...</option>
-          {campo.options?.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={campo.type}
-          required={campo.required}
-          placeholder={campo.placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={baseClass}
-        />
-      )}
-    </div>
   );
 }

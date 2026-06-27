@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CampoSchema } from "@/lib/types";
-import { formatBRL } from "@/lib/format";
+import { inferMask, formatCanonical } from "@/lib/masks";
+import { CampoInput, validateForm } from "@/components/campo-input";
 
 export function DadosEditor({
   solicitacaoId,
@@ -18,34 +19,58 @@ export function DadosEditor({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState<Record<string, string | number>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function startEditing() {
-    // Inicializa formData com valores atuais
-    const initial: Record<string, string> = {};
+    const initial: Record<string, string | number> = {};
     for (const campo of schema) {
-      initial[campo.key] = String(dados[campo.key] ?? "");
+      const val = dados[campo.key];
+      if (val == null || val === "") {
+        initial[campo.key] = "";
+      } else if (typeof val === "number") {
+        initial[campo.key] = val;
+      } else {
+        initial[campo.key] = String(val);
+      }
     }
     setFormData(initial);
     setEditing(true);
     setError(null);
+    setFieldErrors({});
   }
 
   function cancelEditing() {
     setEditing(false);
     setFormData({});
     setError(null);
+    setFieldErrors({});
   }
 
-  function handleChange(key: string, value: string) {
+  function handleChange(key: string, value: string | number) {
     setFormData((prev) => ({ ...prev, [key]: value }));
+    if (fieldErrors[key]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
   }
 
   async function handleSave() {
+    const errors = validateForm(formData, schema);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError("Corrija os campos destacados.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
+    setFieldErrors({});
 
     try {
       const res = await fetch(`/api/solicitacoes/${solicitacaoId}`, {
@@ -72,12 +97,10 @@ export function DadosEditor({
   function displayValue(campo: CampoSchema): string {
     const val = dados[campo.key];
     if (val == null || val === "") return "—";
-    if (campo.key === "valor_total") return formatBRL(val);
+    const mask = inferMask(campo.key, campo.type);
+    if (mask) return formatCanonical(val, mask);
     return String(val);
   }
-
-  const inputClass =
-    "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
 
   return (
     <div className="rounded-lg border border-gray-200 p-5 md:col-span-2">
@@ -122,36 +145,13 @@ export function DadosEditor({
       {editing ? (
         <div className="grid gap-4 sm:grid-cols-2">
           {schema.map((campo) => (
-            <div key={campo.key}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {campo.label}
-                {campo.required && (
-                  <span className="text-red-500 ml-0.5">*</span>
-                )}
-              </label>
-              {campo.type === "select" ? (
-                <select
-                  value={formData[campo.key] ?? ""}
-                  onChange={(e) => handleChange(campo.key, e.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">Selecione...</option>
-                  {campo.options?.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type={campo.type}
-                  value={formData[campo.key] ?? ""}
-                  onChange={(e) => handleChange(campo.key, e.target.value)}
-                  placeholder={campo.placeholder}
-                  className={inputClass}
-                />
-              )}
-            </div>
+            <CampoInput
+              key={campo.key}
+              campo={campo}
+              value={formData[campo.key]}
+              onChange={(v) => handleChange(campo.key, v)}
+              error={fieldErrors[campo.key]}
+            />
           ))}
         </div>
       ) : (

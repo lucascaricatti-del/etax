@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessao } from "@/lib/auth";
+import { normalizeDados } from "@/lib/masks";
 
 export async function PATCH(
   request: Request,
@@ -53,10 +54,20 @@ export async function PATCH(
       );
     }
 
+    // Buscar schema para normalização
+    const { data: tipo } = await supabase
+      .from("tipos_contrato")
+      .select("schema_campos")
+      .eq("id", solicitacao.tipo_contrato_id)
+      .single();
+
+    const schema = (tipo?.schema_campos ?? []) as Array<{ key: string; type?: string }>;
+    const dadosNormalizados = normalizeDados(dados, schema);
+
     // Atualizar dados da solicitação
     const { error: errUpdate } = await supabase
       .from("solicitacoes")
-      .update({ dados })
+      .update({ dados: dadosNormalizados })
       .eq("id", id);
 
     if (errUpdate) {
@@ -71,33 +82,28 @@ export async function PATCH(
       const contraparte = solicitacao.contraparte;
       const contraparteUpdate: Record<string, unknown> = {};
 
-      // Nome: PJ usa razao_social, PF usa nome
-      const isPJ = Boolean(dados.cnpj);
-      const newNome = isPJ ? dados.razao_social : dados.nome;
+      const isPJ = Boolean(dadosNormalizados.cnpj);
+      const newNome = isPJ ? dadosNormalizados.razao_social : dadosNormalizados.nome;
       if (newNome && newNome !== contraparte?.nome) {
         contraparteUpdate.nome = newNome;
       }
 
-      // Documento
-      const newDoc = isPJ ? dados.cnpj : dados.cpf;
+      const newDoc = isPJ ? dadosNormalizados.cnpj : dadosNormalizados.cpf;
       if (newDoc && newDoc !== contraparte?.cpf_cnpj) {
         contraparteUpdate.cpf_cnpj = newDoc;
       }
 
-      // Tipo pessoa
       const newTipoPessoa = isPJ ? "PJ" : "PF";
       if (newTipoPessoa !== contraparte?.tipo_pessoa) {
         contraparteUpdate.tipo_pessoa = newTipoPessoa;
       }
 
-      // Email
-      if (dados.email != null && dados.email !== contraparte?.email) {
-        contraparteUpdate.email = dados.email || null;
+      if (dadosNormalizados.email != null && dadosNormalizados.email !== contraparte?.email) {
+        contraparteUpdate.email = dadosNormalizados.email || null;
       }
 
-      // Telefone (whatsapp)
-      if (dados.whatsapp != null && dados.whatsapp !== contraparte?.telefone) {
-        contraparteUpdate.telefone = dados.whatsapp || null;
+      if (dadosNormalizados.whatsapp != null && dadosNormalizados.whatsapp !== contraparte?.telefone) {
+        contraparteUpdate.telefone = dadosNormalizados.whatsapp || null;
       }
 
       if (Object.keys(contraparteUpdate).length > 0) {
