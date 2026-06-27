@@ -1,5 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSessao } from "@/lib/auth";
 import type { TipoContrato } from "@/lib/types";
 import { ContratoForm } from "./contrato-form";
 
@@ -8,6 +9,9 @@ export default async function ContratoPage({
 }: {
   params: Promise<{ tipo: string }>;
 }) {
+  const sessao = await getSessao();
+  if (!sessao) redirect("/login");
+
   const { tipo: slug } = await params;
   const supabase = createAdminClient();
 
@@ -18,11 +22,26 @@ export default async function ContratoPage({
     .eq("ativo", true)
     .single();
 
-  if (!tipo) {
-    notFound();
-  }
+  if (!tipo) notFound();
 
   const tipoContrato = tipo as TipoContrato;
+
+  // Resolve workspace info
+  let workspaces: Array<{ id: string; nome: string }> = [];
+  let defaultWorkspaceId: string | null = null;
+
+  if (sessao.isEtax) {
+    // Etax: fetch all workspaces for selector
+    const { data } = await supabase
+      .from("workspaces")
+      .select("id, nome")
+      .eq("ativo", true)
+      .order("nome");
+    workspaces = data ?? [];
+  } else {
+    // Cliente: auto-use their workspace
+    defaultWorkspaceId = sessao.workspaceIds[0] ?? null;
+  }
 
   return (
     <>
@@ -32,7 +51,12 @@ export default async function ContratoPage({
       <p className="text-gray-600 mb-8">
         Preencha os dados abaixo para solicitar a confecção do contrato.
       </p>
-      <ContratoForm tipoContrato={tipoContrato} />
+      <ContratoForm
+        tipoContrato={tipoContrato}
+        isEtax={sessao.isEtax}
+        workspaces={workspaces}
+        defaultWorkspaceId={defaultWorkspaceId}
+      />
     </>
   );
 }

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const ETAX_NAV = [
   { label: "Dashboard", href: "/dashboard" },
+  { label: "Empresas", href: "/empresas" },
   { label: "Solicitações", href: "/solicitacoes" },
   { label: "Confecção", href: "/confeccao" },
   { label: "Assinaturas", href: "/assinaturas" },

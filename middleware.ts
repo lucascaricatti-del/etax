@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = ["/login", "/signup", "/contrato", "/api"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/aceitar-convite", "/api"];
 
 function isPublic(pathname: string) {
   return PUBLIC_ROUTES.some((r) => pathname.startsWith(r));

@@ -1,16 +1,45 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSessao } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const sessao = await getSessao();
+    if (!sessao) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { tipo_contrato_id, dados } = body;
+    const { tipo_contrato_id, dados, workspace_id } = body;
 
     if (!tipo_contrato_id || !dados) {
       return NextResponse.json(
         { error: "tipo_contrato_id e dados são obrigatórios" },
         { status: 400 }
       );
+    }
+
+    // Resolve workspace_id
+    let resolvedWorkspaceId: string | null = null;
+
+    if (sessao.isEtax) {
+      // Etax must provide workspace_id
+      if (!workspace_id) {
+        return NextResponse.json(
+          { error: "workspace_id é obrigatório para usuários Etax" },
+          { status: 400 }
+        );
+      }
+      resolvedWorkspaceId = workspace_id;
+    } else {
+      // Cliente: use their workspace
+      if (sessao.workspaceIds.length === 0) {
+        return NextResponse.json(
+          { error: "Usuário não pertence a nenhum workspace" },
+          { status: 403 }
+        );
+      }
+      resolvedWorkspaceId = sessao.workspaceIds[0];
     }
 
     const supabase = createAdminClient();
@@ -68,12 +97,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert solicitacao
+    // Insert solicitacao with workspace_id
     const { data: solicitacao, error: solicitacaoError } = await supabase
       .from("solicitacoes")
       .insert({
         tipo_contrato_id,
         contraparte_id: contraparte.id,
+        workspace_id: resolvedWorkspaceId,
         status: "nova",
         dados,
       })

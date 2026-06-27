@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import type { SolicitacaoComDetalhes } from "@/lib/types";
 import { Filters } from "./filters";
@@ -7,15 +8,34 @@ import { Filters } from "./filters";
 export default async function SolicitacoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tipo?: string; status?: string }>;
+  searchParams: Promise<{ tipo?: string; status?: string; empresa?: string }>;
 }) {
-  const { tipo, status } = await searchParams;
+  const { tipo, status, empresa } = await searchParams;
+  const sessao = await getSessao();
   const supabase = createAdminClient();
 
   let query = supabase
     .from("solicitacoes")
-    .select("*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*)")
+    .select(
+      "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), workspace:workspaces(id, nome)"
+    )
     .order("created_at", { ascending: false });
+
+  // Scope by workspace
+  if (sessao?.isEtax) {
+    // Etax: optionally filter by empresa
+    if (empresa) {
+      query = query.eq("workspace_id", empresa);
+    }
+  } else {
+    // Cliente: only their workspace(s)
+    const ids = sessao?.workspaceIds ?? [];
+    if (ids.length > 0) {
+      query = query.in("workspace_id", ids);
+    } else {
+      query = query.eq("workspace_id", "00000000-0000-0000-0000-000000000000");
+    }
+  }
 
   if (tipo) {
     query = query.eq("tipo_contrato_id", tipo);
@@ -34,7 +54,20 @@ export default async function SolicitacoesPage({
     .eq("ativo", true)
     .order("nome");
 
-  const items = (solicitacoes ?? []) as unknown as SolicitacaoComDetalhes[];
+  // Fetch workspaces for empresa filter (etax only)
+  let workspaces: Array<{ id: string; nome: string }> = [];
+  if (sessao?.isEtax) {
+    const { data } = await supabase
+      .from("workspaces")
+      .select("id, nome")
+      .eq("ativo", true)
+      .order("nome");
+    workspaces = data ?? [];
+  }
+
+  const items = (solicitacoes ?? []) as unknown as (SolicitacaoComDetalhes & {
+    workspace?: { id: string; nome: string } | null;
+  })[];
 
   return (
     <div>
@@ -44,6 +77,9 @@ export default async function SolicitacoesPage({
         tipos={tipos ?? []}
         tipoAtual={tipo}
         statusAtual={status}
+        isEtax={sessao?.isEtax ?? false}
+        workspaces={workspaces}
+        empresaAtual={empresa}
       />
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 mt-4">
@@ -53,6 +89,11 @@ export default async function SolicitacoesPage({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Contraparte
               </th>
+              {sessao?.isEtax && (
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Empresa
+                </th>
+              )}
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Tipo
               </th>
@@ -71,7 +112,7 @@ export default async function SolicitacoesPage({
             {items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={sessao?.isEtax ? 6 : 5}
                   className="px-4 py-8 text-center text-sm text-gray-500"
                 >
                   Nenhuma solicitação encontrada.
@@ -83,6 +124,11 @@ export default async function SolicitacoesPage({
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {s.contraparte?.nome ?? "—"}
                   </td>
+                  {sessao?.isEtax && (
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {s.workspace?.nome ?? "—"}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {s.tipo_contrato?.nome ?? "—"}
                   </td>

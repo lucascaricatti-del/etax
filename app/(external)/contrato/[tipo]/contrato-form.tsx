@@ -5,11 +5,20 @@ import type { CampoSchema, TipoContrato } from "@/lib/types";
 
 export function ContratoForm({
   tipoContrato,
+  isEtax,
+  workspaces,
+  defaultWorkspaceId,
 }: {
   tipoContrato: TipoContrato;
+  isEtax: boolean;
+  workspaces: Array<{ id: string; nome: string }>;
+  defaultWorkspaceId: string | null;
 }) {
   const [dados, setDados] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [workspaceId, setWorkspaceId] = useState(defaultWorkspaceId ?? "");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
   function handleChange(key: string, value: string) {
@@ -21,6 +30,13 @@ export function ContratoForm({
     setStatus("loading");
     setErrorMessage("");
 
+    const resolvedWorkspaceId = isEtax ? workspaceId : defaultWorkspaceId;
+    if (!resolvedWorkspaceId) {
+      setStatus("error");
+      setErrorMessage("Selecione a empresa.");
+      return;
+    }
+
     try {
       const res = await fetch("/api/solicitacoes", {
         method: "POST",
@@ -28,6 +44,7 @@ export function ContratoForm({
         body: JSON.stringify({
           tipo_contrato_id: tipoContrato.id,
           dados,
+          workspace_id: resolvedWorkspaceId,
         }),
       });
 
@@ -59,8 +76,32 @@ export function ContratoForm({
     );
   }
 
+  const baseClass =
+    "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {isEtax && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Empresa <span className="text-red-500 ml-0.5">*</span>
+          </label>
+          <select
+            required
+            value={workspaceId}
+            onChange={(e) => setWorkspaceId(e.target.value)}
+            className={baseClass}
+          >
+            <option value="">Selecione a empresa...</option>
+            {workspaces.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {tipoContrato.schema_campos.map((campo) => (
         <FieldInput
           key={campo.key}
