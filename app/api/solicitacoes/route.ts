@@ -19,20 +19,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Resolve workspace_id
-    let resolvedWorkspaceId: string | null = null;
+    // Resolve workspace_id — security: cliente never creates for another workspace
+    let resolvedWorkspaceId: string;
 
     if (sessao.isEtax) {
-      // Etax must provide workspace_id
       if (!workspace_id) {
         return NextResponse.json(
-          { error: "workspace_id é obrigatório para usuários Etax" },
+          { error: "Selecione a empresa para a solicitação" },
           { status: 400 }
         );
       }
       resolvedWorkspaceId = workspace_id;
     } else {
-      // Cliente: use their workspace
+      // Cliente: always use their own workspace, ignore any workspace_id in payload
       if (sessao.workspaceIds.length === 0) {
         return NextResponse.json(
           { error: "Usuário não pertence a nenhum workspace" },
@@ -84,6 +83,7 @@ export async function POST(request: Request) {
           tipo_pessoa: "PF",
           email: dados.email || null,
           telefone: dados.whatsapp || null,
+          workspace_id: resolvedWorkspaceId,
         },
         { onConflict: "cpf_cnpj" }
       )
@@ -97,13 +97,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert solicitacao with workspace_id
+    // Insert solicitacao with workspace_id + solicitante
     const { data: solicitacao, error: solicitacaoError } = await supabase
       .from("solicitacoes")
       .insert({
         tipo_contrato_id,
         contraparte_id: contraparte.id,
         workspace_id: resolvedWorkspaceId,
+        solicitante_id: sessao.user.id,
         status: "nova",
         dados,
       })

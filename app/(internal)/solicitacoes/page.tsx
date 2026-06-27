@@ -4,6 +4,7 @@ import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import type { SolicitacaoComDetalhes } from "@/lib/types";
 import { Filters } from "./filters";
+import { NovaSolicitacaoForm } from "./nova-solicitacao-form";
 
 export default async function SolicitacoesPage({
   searchParams,
@@ -47,10 +48,10 @@ export default async function SolicitacoesPage({
 
   const { data: solicitacoes } = await query;
 
-  // Fetch tipos for filter dropdown
+  // Fetch tipos for filter dropdown + form fields
   const { data: tipos } = await supabase
     .from("tipos_contrato")
-    .select("id, nome")
+    .select("id, nome, schema_campos")
     .eq("ativo", true)
     .order("nome");
 
@@ -69,9 +70,25 @@ export default async function SolicitacoesPage({
     workspace?: { id: string; nome: string } | null;
   })[];
 
+  // Resolve defaultWorkspaceId for cliente
+  const defaultWorkspaceId = sessao?.isEtax
+    ? null
+    : sessao?.workspaceIds[0] ?? null;
+
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Solicitações</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Solicitações</h1>
+      </div>
+
+      <NovaSolicitacaoForm
+        tipos={(tipos ?? []) as Array<{ id: string; nome: string; schema_campos: import("@/lib/types").CampoSchema[] }>}
+        workspaces={workspaces}
+        isEtax={sessao?.isEtax ?? false}
+        defaultWorkspaceId={defaultWorkspaceId}
+      />
+
+      <div className="mt-4" />
 
       <Filters
         tipos={tipos ?? []}
