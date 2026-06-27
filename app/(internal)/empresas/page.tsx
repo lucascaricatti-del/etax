@@ -10,10 +10,15 @@ export default async function EmpresasPage() {
 
   const supabase = createAdminClient();
 
-  const { data: workspaces } = await supabase
+  const { data: workspaces, error: wsError } = await supabase
     .from("workspaces")
     .select("id, nome, cnpj, slug, ativo, created_at")
     .order("nome");
+
+  console.log("[/empresas] workspaces query:", {
+    count: workspaces?.length ?? 0,
+    error: wsError?.message ?? null,
+  });
 
   // Fetch member counts
   const { data: memberCounts } = await supabase

@@ -31,6 +31,8 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // IMPORTANT: always call getUser() to refresh the session token.
+  // Do NOT use getSession() — it reads from storage without validating.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -41,14 +43,23 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublic(pathname) && pathname !== "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    // Carry over any refreshed auth cookies to the redirect response
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirect.cookies.set(cookie.name, cookie.value);
+    });
+    return redirect;
   }
 
   // Logged in + on login/signup -> /
   if (user && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirect.cookies.set(cookie.name, cookie.value);
+    });
+    return redirect;
   }
 
   return supabaseResponse;

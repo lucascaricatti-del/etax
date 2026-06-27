@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export function AcceptForm({
@@ -11,7 +10,6 @@ export function AcceptForm({
   token: string;
   email: string;
 }) {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,8 +47,8 @@ export function AcceptForm({
       return;
     }
 
-    router.push("/solicitacoes");
-    router.refresh();
+    // Hard redirect — ensures cookies are sent fresh to the server
+    window.location.href = "/solicitacoes";
   }
 
   const inputClass =
