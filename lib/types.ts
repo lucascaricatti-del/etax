@@ -70,3 +70,14 @@ export interface SolicitacaoComDetalhes extends Solicitacao {
   contraparte: Contraparte;
   tipo_contrato: TipoContrato;
 }
+
+export interface Modelo {
+  id: string;
+  tipo_contrato_id: string;
+  clicksign_template_key: string;
+  variaveis: string[];
+  versao: number;
+  ativo: boolean;
+  criado_em: string;
+  workspace_id: string | null;
+}

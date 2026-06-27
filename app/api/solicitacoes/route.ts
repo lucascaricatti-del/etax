@@ -73,14 +73,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // Upsert contraparte by cpf_cnpj
+    // Upsert contraparte — PJ se tem cnpj, PF se tem cpf
+    const isPJ = Boolean(dados.cnpj);
     const { data: contraparte, error: contraparteError } = await supabase
       .from("contrapartes")
       .upsert(
         {
-          nome: dados.nome,
-          cpf_cnpj: dados.cpf,
-          tipo_pessoa: "PF",
+          nome: isPJ ? dados.razao_social : dados.nome,
+          cpf_cnpj: isPJ ? dados.cnpj : dados.cpf,
+          tipo_pessoa: isPJ ? "PJ" : "PF",
           email: dados.email || null,
           telefone: dados.whatsapp || null,
           workspace_id: resolvedWorkspaceId,
