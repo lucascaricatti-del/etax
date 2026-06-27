@@ -41,23 +41,18 @@ function mapEventToStatus(
   }
 }
 
-/** Status correspondente na solicitação. */
+/**
+ * Status correspondente na solicitação.
+ *
+ * A solicitação NÃO muda de status após `enviada_assinatura`.
+ * O estágio final da assinatura vive em `contratos.status_assinatura`
+ * (assinado / recusado / expirado) — são dimensões de estado separadas.
+ * Retorna sempre null para não tentar gravar valores inexistentes no enum.
+ */
 function mapEventToSolicitacaoStatus(
-  eventName: string
+  _eventName: string
 ): string | null {
-  switch (eventName) {
-    case "auto_close":
-    case "close":
-    case "document_closed":
-      return "assinada";
-    case "refusal":
-      return "recusada";
-    case "deadline":
-    case "cancel":
-      return "expirada";
-    default:
-      return null;
-  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
