@@ -73,29 +73,69 @@ export async function POST(request: Request) {
       );
     }
 
-    // Upsert contraparte — PJ se tem cnpj, PF se tem cpf
+    // Resolve contraparte — PJ se tem cnpj, PF se tem cpf
     const isPJ = Boolean(dados.cnpj);
-    const { data: contraparte, error: contraparteError } = await supabase
-      .from("contrapartes")
-      .upsert(
-        {
-          nome: isPJ ? dados.razao_social : dados.nome,
-          cpf_cnpj: isPJ ? dados.cnpj : dados.cpf,
-          tipo_pessoa: isPJ ? "PJ" : "PF",
+    const doc: string | null = (isPJ ? dados.cnpj : dados.cpf) || null;
+    const nomeContraparte = isPJ ? dados.razao_social : dados.nome;
+    const tipoPessoa = isPJ ? "PJ" : "PF";
+
+    let contraparteId: string;
+
+    if (doc) {
+      // Tenta achar contraparte existente pelo documento neste workspace
+      const { data: existente } = await supabase
+        .from("contrapartes")
+        .select("id")
+        .eq("workspace_id", resolvedWorkspaceId)
+        .eq("cpf_cnpj", doc)
+        .maybeSingle();
+
+      if (existente) {
+        contraparteId = existente.id;
+      } else {
+        const { data: nova, error: errNova } = await supabase
+          .from("contrapartes")
+          .insert({
+            nome: nomeContraparte,
+            cpf_cnpj: doc,
+            tipo_pessoa: tipoPessoa,
+            email: dados.email || null,
+            telefone: dados.whatsapp || null,
+            workspace_id: resolvedWorkspaceId,
+          })
+          .select("id")
+          .single();
+
+        if (errNova || !nova) {
+          return NextResponse.json(
+            { error: "Erro ao criar contraparte: " + errNova?.message },
+            { status: 500 }
+          );
+        }
+        contraparteId = nova.id;
+      }
+    } else {
+      // Sem documento — insere direto sem tentar casar
+      const { data: nova, error: errNova } = await supabase
+        .from("contrapartes")
+        .insert({
+          nome: nomeContraparte,
+          cpf_cnpj: null,
+          tipo_pessoa: tipoPessoa,
           email: dados.email || null,
           telefone: dados.whatsapp || null,
           workspace_id: resolvedWorkspaceId,
-        },
-        { onConflict: "cpf_cnpj" }
-      )
-      .select("id")
-      .single();
+        })
+        .select("id")
+        .single();
 
-    if (contraparteError || !contraparte) {
-      return NextResponse.json(
-        { error: "Erro ao criar contraparte: " + contraparteError?.message },
-        { status: 500 }
-      );
+      if (errNova || !nova) {
+        return NextResponse.json(
+          { error: "Erro ao criar contraparte: " + errNova?.message },
+          { status: 500 }
+        );
+      }
+      contraparteId = nova.id;
     }
 
     // Insert solicitacao with workspace_id + solicitante
@@ -103,7 +143,7 @@ export async function POST(request: Request) {
       .from("solicitacoes")
       .insert({
         tipo_contrato_id,
-        contraparte_id: contraparte.id,
+        contraparte_id: contraparteId,
         workspace_id: resolvedWorkspaceId,
         solicitante_id: sessao.user.id,
         status: "nova",
