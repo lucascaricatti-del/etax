@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
+import { GerarContratoButton } from "./gerar-contrato-button";
+import { DadosEditor } from "./dados-editor";
 import type { SolicitacaoComDetalhes, CampoSchema } from "@/lib/types";
 
 export default async function SolicitacaoDetalhePage({
@@ -10,6 +13,7 @@ export default async function SolicitacaoDetalhePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const sessao = await getSessao();
   const supabase = createAdminClient();
 
   const { data } = await supabase
@@ -24,6 +28,9 @@ export default async function SolicitacaoDetalhePage({
 
   const s = data as unknown as SolicitacaoComDetalhes;
   const schema = (s.tipo_contrato?.schema_campos ?? []) as CampoSchema[];
+  const canEdit =
+    (sessao?.isEtax ?? false) &&
+    ["nova", "em_confeccao"].includes(s.status);
 
   return (
     <div>
@@ -37,6 +44,13 @@ export default async function SolicitacaoDetalhePage({
       <div className="flex items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold">Solicitação</h1>
         <StatusBadge status={s.status} />
+        {canEdit && (
+          <GerarContratoButton
+            solicitacaoId={s.id}
+            contraparteNome={s.contraparte?.nome ?? "—"}
+            contraparteEmail={s.contraparte?.email ?? null}
+          />
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -52,7 +66,9 @@ export default async function SolicitacaoDetalhePage({
             </div>
             <div>
               <dt className="text-gray-500">CPF/CNPJ</dt>
-              <dd className="font-medium">{s.contraparte?.cpf_cnpj ?? "—"}</dd>
+              <dd className="font-medium">
+                {s.contraparte?.cpf_cnpj ?? "—"}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">E-mail</dt>
@@ -60,7 +76,9 @@ export default async function SolicitacaoDetalhePage({
             </div>
             <div>
               <dt className="text-gray-500">Telefone</dt>
-              <dd className="font-medium">{s.contraparte?.telefone ?? "—"}</dd>
+              <dd className="font-medium">
+                {s.contraparte?.telefone ?? "—"}
+              </dd>
             </div>
           </dl>
         </div>
@@ -73,7 +91,9 @@ export default async function SolicitacaoDetalhePage({
           <dl className="space-y-2 text-sm">
             <div>
               <dt className="text-gray-500">Tipo de contrato</dt>
-              <dd className="font-medium">{s.tipo_contrato?.nome ?? "—"}</dd>
+              <dd className="font-medium">
+                {s.tipo_contrato?.nome ?? "—"}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">Status</dt>
@@ -96,22 +116,13 @@ export default async function SolicitacaoDetalhePage({
           </dl>
         </div>
 
-        {/* Dados do formulário */}
-        <div className="rounded-lg border border-gray-200 p-5 md:col-span-2">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-            Dados do formulário
-          </h2>
-          <dl className="grid gap-3 sm:grid-cols-2">
-            {schema.map((campo) => (
-              <div key={campo.key}>
-                <dt className="text-sm text-gray-500">{campo.label}</dt>
-                <dd className="text-sm font-medium">
-                  {String(s.dados[campo.key] ?? "—")}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        {/* Dados do formulário — editável */}
+        <DadosEditor
+          solicitacaoId={s.id}
+          dados={s.dados}
+          schema={schema}
+          canEdit={canEdit}
+        />
 
         {/* Observações */}
         {s.observacoes && (
