@@ -98,9 +98,8 @@ export async function PATCH(
         contraparteUpdate.tipo_pessoa = newTipoPessoa;
       }
 
-      if (dadosNormalizados.email != null && dadosNormalizados.email !== contraparte?.email) {
-        contraparteUpdate.email = dadosNormalizados.email || null;
-      }
+      // Email da contraparte NÃO é sincronizado aqui — dados.email é do representante.
+      // O email da contraparte é editado diretamente via PATCH /api/contrapartes/[id].
 
       if (dadosNormalizados.whatsapp != null && dadosNormalizados.whatsapp !== contraparte?.telefone) {
         contraparteUpdate.telefone = dadosNormalizados.whatsapp || null;

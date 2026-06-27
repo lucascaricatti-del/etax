@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 
 export function GerarContratoButton({
   solicitacaoId,
-  contraparteNome,
-  contraparteEmail,
+  signerNome,
+  signerEmail,
 }: {
   solicitacaoId: string;
-  contraparteNome: string;
-  contraparteEmail: string | null;
+  signerNome: string;
+  signerEmail: string | null;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,14 +58,14 @@ export function GerarContratoButton({
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-4 space-y-2">
             <div>
               <span className="text-xs text-gray-500 uppercase">
-                Signatário
+                Representante / Signatário
               </span>
-              <p className="text-sm font-semibold">{contraparteNome}</p>
+              <p className="text-sm font-semibold">{signerNome}</p>
             </div>
             <div>
               <span className="text-xs text-gray-500 uppercase">E-mail</span>
               <p className="text-sm font-semibold">
-                {contraparteEmail || (
+                {signerEmail || (
                   <span className="text-red-600">
                     E-mail não cadastrado
                   </span>
@@ -74,10 +74,10 @@ export function GerarContratoButton({
             </div>
           </div>
 
-          {!contraparteEmail && (
+          {!signerEmail && (
             <p className="text-sm text-red-600 mb-4">
-              A contraparte não tem e-mail cadastrado. Edite os dados antes de
-              gerar o contrato.
+              O campo &quot;email&quot; do representante não está preenchido nos dados
+              da solicitação. Edite os dados antes de gerar o contrato.
             </p>
           )}
 
@@ -100,7 +100,7 @@ export function GerarContratoButton({
             </button>
             <button
               onClick={handleConfirm}
-              disabled={loading || !contraparteEmail}
+              disabled={loading || !signerEmail}
               className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (

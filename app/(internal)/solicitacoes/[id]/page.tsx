@@ -5,6 +5,7 @@ import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { GerarContratoButton } from "./gerar-contrato-button";
 import { DadosEditor } from "./dados-editor";
+import { ContraparteEditor } from "./contraparte-editor";
 import type { SolicitacaoComDetalhes, CampoSchema } from "@/lib/types";
 
 export default async function SolicitacaoDetalhePage({
@@ -32,6 +33,14 @@ export default async function SolicitacaoDetalhePage({
     (sessao?.isEtax ?? false) &&
     ["nova", "em_confeccao"].includes(s.status);
 
+  // O signatário é o representante legal (dados.email), não o email da contraparte/empresa
+  const signerNome =
+    (s.dados.rep_nome as string) ||
+    (s.dados.nome as string) ||
+    s.contraparte?.nome ||
+    "—";
+  const signerEmail = (s.dados.email as string) || null;
+
   return (
     <div>
       <Link
@@ -47,41 +56,20 @@ export default async function SolicitacaoDetalhePage({
         {canEdit && (
           <GerarContratoButton
             solicitacaoId={s.id}
-            contraparteNome={s.contraparte?.nome ?? "—"}
-            contraparteEmail={s.contraparte?.email ?? null}
+            signerNome={signerNome}
+            signerEmail={signerEmail}
           />
         )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Contraparte */}
-        <div className="rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-            Contraparte
-          </h2>
-          <dl className="space-y-2 text-sm">
-            <div>
-              <dt className="text-gray-500">Nome</dt>
-              <dd className="font-medium">{s.contraparte?.nome ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">CPF/CNPJ</dt>
-              <dd className="font-medium">
-                {s.contraparte?.cpf_cnpj ?? "—"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">E-mail</dt>
-              <dd className="font-medium">{s.contraparte?.email ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Telefone</dt>
-              <dd className="font-medium">
-                {s.contraparte?.telefone ?? "—"}
-              </dd>
-            </div>
-          </dl>
-        </div>
+        {/* Contraparte — editável */}
+        {s.contraparte && (
+          <ContraparteEditor
+            contraparte={s.contraparte}
+            canEdit={sessao?.isEtax ?? false}
+          />
+        )}
 
         {/* Info geral */}
         <div className="rounded-lg border border-gray-200 p-5">

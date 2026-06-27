@@ -106,7 +106,7 @@ export async function POST(request: Request) {
             nome: nomeContraparte,
             cpf_cnpj: doc,
             tipo_pessoa: tipoPessoa,
-            email: dadosNormalizados.email || null,
+            email: null,
             telefone: dadosNormalizados.whatsapp || null,
             workspace_id: resolvedWorkspaceId,
           })
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
           nome: nomeContraparte,
           cpf_cnpj: null,
           tipo_pessoa: tipoPessoa,
-          email: dadosNormalizados.email || null,
+          email: null,
           telefone: dadosNormalizados.whatsapp || null,
           workspace_id: resolvedWorkspaceId,
         })

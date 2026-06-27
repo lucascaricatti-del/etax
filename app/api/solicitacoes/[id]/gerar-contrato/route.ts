@@ -118,16 +118,18 @@ export async function POST(
     );
     console.log("[GerarContrato] Documento adicionado:", documentId);
 
-    // Step 3: Adicionar signatário (contraparte)
-    const signerEmail = contraparte.email;
+    // Step 3: Adicionar signatário (representante legal)
+    // O e-mail do signatário vem de dados.email (representante), NÃO de contraparte.email (empresa).
+    const signerEmail = solicitacao.dados.email as string | undefined;
+    const signerNome = (solicitacao.dados.rep_nome as string) || (solicitacao.dados.nome as string) || contraparte.nome;
     if (!signerEmail) {
       return NextResponse.json(
-        { error: "Contraparte sem e-mail. Necessário para assinatura." },
+        { error: "E-mail do representante/signatário não encontrado nos dados da solicitação." },
         { status: 400 }
       );
     }
 
-    const signerId = await addSigner(envelopeId, contraparte.nome, signerEmail);
+    const signerId = await addSigner(envelopeId, signerNome, signerEmail);
     console.log("[GerarContrato] Signatário adicionado:", signerId);
 
     // Step 4a: Requirement de autenticação (e-mail)
