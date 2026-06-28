@@ -87,4 +87,11 @@ export interface Modelo {
   workspace_id: string | null;
   nome: string | null;
   descricao: string | null;
+  natureza_financeira: "receita" | "despesa" | "neutro";
+  disponibilidade: "todas" | "especificas";
+}
+
+export interface ModeloComDetalhes extends Modelo {
+  tipo_contrato?: TipoContrato | null;
+  modelo_empresas?: { workspace_id: string }[];
 }
