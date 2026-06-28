@@ -334,7 +334,7 @@ export async function fetchDashboardFinanceiro(
       data_distrato: row.data_distrato,
       valor_distrato: row.valor_distrato,
       status_assinatura: row.status_assinatura,
-      natureza_financeira: modelo?.natureza_financeira ?? "neutro",
+      natureza_financeira: modelo?.natureza_financeira ?? "receita",
       workspace_nome: ws?.nome ?? "Sem empresa",
       workspace_nome_fantasia: ws?.nome_fantasia ?? null,
     };
