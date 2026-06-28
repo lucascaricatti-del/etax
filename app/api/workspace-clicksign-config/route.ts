@@ -46,6 +46,12 @@ export async function GET(request: Request) {
   }
 }
 
+/** Validate CPF format: must have exactly 11 digits */
+function isValidCpf(cpf: string): boolean {
+  const digits = cpf.replace(/\D/g, "");
+  return digits.length === 11;
+}
+
 /** POST /api/workspace-clicksign-config — create or update config */
 export async function POST(request: Request) {
   try {
@@ -60,11 +66,14 @@ export async function POST(request: Request) {
       clicksign_token,
       contratada_nome,
       contratada_email,
+      contratada_cpf,
       contratada_auto,
       testemunha1_nome,
       testemunha1_email,
+      testemunha1_cpf,
       testemunha2_nome,
       testemunha2_email,
+      testemunha2_cpf,
     } = body;
 
     if (!workspace_id || !clicksign_token?.trim()) {
@@ -105,6 +114,21 @@ export async function POST(request: Request) {
       }
     }
 
+    // Validate CPFs
+    const cpfs = [
+      { label: "Contratada", value: contratada_cpf },
+      { label: "Testemunha 1", value: testemunha1_cpf },
+      { label: "Testemunha 2", value: testemunha2_cpf },
+    ];
+    for (const { label, value } of cpfs) {
+      if (!value?.trim() || !isValidCpf(value)) {
+        return NextResponse.json(
+          { error: `CPF inválido ou ausente: ${label}. Informe os 11 dígitos.` },
+          { status: 400 }
+        );
+      }
+    }
+
     const supabase = createAdminClient();
 
     const payload = {
@@ -112,11 +136,14 @@ export async function POST(request: Request) {
       clicksign_token: clicksign_token.trim(),
       contratada_nome: contratada_nome.trim(),
       contratada_email: contratada_email.trim(),
+      contratada_cpf: contratada_cpf.trim(),
       contratada_auto: !!contratada_auto,
       testemunha1_nome: testemunha1_nome.trim(),
       testemunha1_email: testemunha1_email.trim(),
+      testemunha1_cpf: testemunha1_cpf.trim(),
       testemunha2_nome: testemunha2_nome.trim(),
       testemunha2_email: testemunha2_email.trim(),
+      testemunha2_cpf: testemunha2_cpf.trim(),
       atualizado_em: new Date().toISOString(),
     };
 

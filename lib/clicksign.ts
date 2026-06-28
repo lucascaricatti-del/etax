@@ -143,15 +143,22 @@ export async function addSigner(
   envelopeId: string,
   name: string,
   email: string,
-  token?: string
+  token?: string,
+  documentation?: string
 ): Promise<string> {
+  const attributes: Record<string, unknown> = { name, email };
+  if (documentation) {
+    attributes.documentation = documentation;
+    attributes.has_documentation = true;
+  }
+
   const res = await clicksignFetch<SignerResponse>(
     `/envelopes/${envelopeId}/signers`,
     "POST",
     {
       data: {
         type: "signers",
-        attributes: { name, email },
+        attributes,
       },
     },
     token

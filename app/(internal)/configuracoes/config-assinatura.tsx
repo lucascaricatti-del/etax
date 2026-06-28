@@ -15,23 +15,39 @@ interface Config {
   clicksign_token: string;
   contratada_nome: string;
   contratada_email: string;
+  contratada_cpf: string;
   contratada_auto: boolean;
   testemunha1_nome: string;
   testemunha1_email: string;
+  testemunha1_cpf: string;
   testemunha2_nome: string;
   testemunha2_email: string;
+  testemunha2_cpf: string;
 }
 
 const EMPTY_CONFIG: Omit<Config, "workspace_id"> = {
   clicksign_token: "",
   contratada_nome: "",
   contratada_email: "",
+  contratada_cpf: "",
   contratada_auto: false,
   testemunha1_nome: "",
   testemunha1_email: "",
+  testemunha1_cpf: "",
   testemunha2_nome: "",
   testemunha2_email: "",
+  testemunha2_cpf: "",
 };
+
+/** Formata CPF: 000.000.000-00 */
+function formatCpf(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9)
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
 
 export function ConfigAssinatura({
   workspaces,
@@ -58,7 +74,11 @@ export function ConfigAssinatura({
 
     const existing = configs.find((c) => c.workspace_id === selectedWsId);
     if (existing) {
-      setForm({ ...existing });
+      setForm({
+        ...EMPTY_CONFIG,
+        ...existing,
+        workspace_id: selectedWsId,
+      });
     } else {
       setForm({
         workspace_id: selectedWsId,
@@ -72,6 +92,11 @@ export function ConfigAssinatura({
   function updateField(field: keyof Config, value: string | boolean) {
     if (!form) return;
     setForm({ ...form, [field]: value });
+  }
+
+  function updateCpf(field: keyof Config, raw: string) {
+    if (!form) return;
+    setForm({ ...form, [field]: formatCpf(raw) });
   }
 
   async function handleSave() {
@@ -183,6 +208,21 @@ export function ConfigAssinatura({
               />
             </div>
 
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                CPF
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={form.contratada_cpf}
+                onChange={(e) => updateCpf("contratada_cpf", e.target.value)}
+                className="etax-input w-full min-h-[48px] font-mono"
+                placeholder="000.000.000-00"
+                maxLength={14}
+              />
+            </div>
+
             <label className="flex items-center gap-2 cursor-pointer min-h-[48px]">
               <input
                 type="checkbox"
@@ -232,6 +272,21 @@ export function ConfigAssinatura({
                 placeholder="email@testemunha.com"
               />
             </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                CPF
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={form.testemunha1_cpf}
+                onChange={(e) => updateCpf("testemunha1_cpf", e.target.value)}
+                className="etax-input w-full min-h-[48px] font-mono"
+                placeholder="000.000.000-00"
+                maxLength={14}
+              />
+            </div>
           </fieldset>
 
           {/* Testemunha 2 */}
@@ -263,6 +318,21 @@ export function ConfigAssinatura({
                 onChange={(e) => updateField("testemunha2_email", e.target.value)}
                 className="etax-input w-full min-h-[48px]"
                 placeholder="email@testemunha.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                CPF
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={form.testemunha2_cpf}
+                onChange={(e) => updateCpf("testemunha2_cpf", e.target.value)}
+                className="etax-input w-full min-h-[48px] font-mono"
+                placeholder="000.000.000-00"
+                maxLength={14}
               />
             </div>
           </fieldset>

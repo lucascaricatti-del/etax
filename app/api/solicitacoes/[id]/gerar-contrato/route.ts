@@ -12,6 +12,26 @@ import {
 } from "@/lib/clicksign";
 import { formatDadosForClickSign } from "@/lib/masks";
 
+/** Validate that workspace config has all required fields including CPFs */
+function validateConfig(wsConfig: Record<string, unknown>): string | null {
+  const missing: string[] = [];
+
+  if (!wsConfig.contratada_nome) missing.push("Nome da contratada");
+  if (!wsConfig.contratada_email) missing.push("E-mail da contratada");
+  if (!wsConfig.contratada_cpf) missing.push("CPF da contratada");
+  if (!wsConfig.testemunha1_nome) missing.push("Nome da testemunha 1");
+  if (!wsConfig.testemunha1_email) missing.push("E-mail da testemunha 1");
+  if (!wsConfig.testemunha1_cpf) missing.push("CPF da testemunha 1");
+  if (!wsConfig.testemunha2_nome) missing.push("Nome da testemunha 2");
+  if (!wsConfig.testemunha2_email) missing.push("E-mail da testemunha 2");
+  if (!wsConfig.testemunha2_cpf) missing.push("CPF da testemunha 2");
+
+  if (missing.length > 0) {
+    return `Configuração de assinatura incompleta. Faltam: ${missing.join(", ")}. Atualize em Configurações.`;
+  }
+  return null;
+}
+
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -110,6 +130,12 @@ export async function POST(
       );
     }
 
+    // 3b. Validar que config está completa (nome, email, CPF de todos os signatários)
+    const configError = validateConfig(wsConfig);
+    if (configError) {
+      return NextResponse.json({ error: configError }, { status: 400 });
+    }
+
     const csToken = wsConfig.clicksign_token;
 
     console.log("[GerarContrato] Modelo selecionado:", {
@@ -152,12 +178,14 @@ export async function POST(
     console.log("[GerarContrato] Documento adicionado:", documentId);
 
     // ---------------------------------------------------------------
-    // Step 3: Adicionar signatários (4 papéis)
+    // Step 3: Adicionar signatários (4 papéis) com CPF (documentation)
     // ---------------------------------------------------------------
 
     // 3a. CONTRATANTE (representante legal da contraparte — assina manual)
     const contratanteEmail = solicitacao.dados.email as string | undefined;
     const contratanteNome = (solicitacao.dados.rep_nome as string) || (solicitacao.dados.nome as string) || contraparte.nome;
+    const contratanteCpf = (solicitacao.dados.cpf as string) || null;
+
     if (!contratanteEmail) {
       return NextResponse.json(
         { error: "E-mail do representante/signatário não encontrado nos dados da solicitação." },
@@ -165,8 +193,11 @@ export async function POST(
       );
     }
 
-    const contratanteId = await addSigner(envelopeId, contratanteNome, contratanteEmail, csToken);
-    console.log("[GerarContrato] Contratante adicionado:", contratanteId);
+    const contratanteId = await addSigner(
+      envelopeId, contratanteNome, contratanteEmail, csToken,
+      contratanteCpf || undefined
+    );
+    console.log("[GerarContrato] Contratante adicionado:", contratanteId, "CPF:", contratanteCpf ? "sim" : "não informado");
 
     // Auth: e-mail
     await addRequirement(envelopeId, documentId, contratanteId, "provide_evidence", {
@@ -182,17 +213,31 @@ export async function POST(
       envelopeId,
       wsConfig.contratada_nome,
       wsConfig.contratada_email,
-      csToken
+      csToken,
+      wsConfig.contratada_cpf
     );
     console.log("[GerarContrato] Contratada adicionada:", contratadaId, "auto:", wsConfig.contratada_auto);
 
     if (wsConfig.contratada_auto) {
       // Assinatura automática — requer Termo de Autorização prévio na ClickSign
-      await addRequirement(envelopeId, documentId, contratadaId, "provide_evidence", {
-        auth: "auto_signature",
-      }, csToken);
-      console.log("[GerarContrato] Contratada configurada com assinatura automática (auto_signature)");
-      console.log("[GerarContrato] NOTA: Requer Termo de Assinatura Automática previamente assinado na ClickSign");
+      try {
+        await addRequirement(envelopeId, documentId, contratadaId, "provide_evidence", {
+          auth: "auto_signature",
+        }, csToken);
+        console.log("[GerarContrato] Contratada configurada com assinatura automática (auto_signature)");
+      } catch (autoErr) {
+        console.error("[GerarContrato] Erro ao configurar assinatura automática:", autoErr);
+        console.error("[GerarContrato] INSTRUÇÃO: O signatário precisa ter assinado o Termo de Assinatura Automática na ClickSign.");
+        console.error("[GerarContrato] Acesse o painel da ClickSign > Assinatura Automática > Envie o termo para:", wsConfig.contratada_email);
+        return NextResponse.json(
+          {
+            error: `Falha ao configurar assinatura automática para ${wsConfig.contratada_nome}. ` +
+              `Verifique se o Termo de Assinatura Automática foi previamente assinado na ClickSign para o e-mail ${wsConfig.contratada_email}. ` +
+              `Acesse o painel da ClickSign > Assinatura Automática para enviar o termo.`,
+          },
+          { status: 400 }
+        );
+      }
     } else {
       // Assinatura manual via e-mail
       await addRequirement(envelopeId, documentId, contratadaId, "provide_evidence", {
@@ -209,7 +254,8 @@ export async function POST(
       envelopeId,
       wsConfig.testemunha1_nome,
       wsConfig.testemunha1_email,
-      csToken
+      csToken,
+      wsConfig.testemunha1_cpf
     );
     console.log("[GerarContrato] Testemunha 1 adicionada:", test1Id);
 
@@ -225,7 +271,8 @@ export async function POST(
       envelopeId,
       wsConfig.testemunha2_nome,
       wsConfig.testemunha2_email,
-      csToken
+      csToken,
+      wsConfig.testemunha2_cpf
     );
     console.log("[GerarContrato] Testemunha 2 adicionada:", test2Id);
 

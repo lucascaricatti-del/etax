@@ -89,13 +89,14 @@ API: `POST /api/modelos/upload` (FormData: `file` + `nome`) → retorna `{clicks
 ## Configuracao de assinatura por empresa
 Tabela `workspace_clicksign_config` (1:1 com `workspaces`):
 - **clicksign_token**: token da API ClickSign da empresa (cada empresa pode ter o seu).
-- **contratada_nome/email**: quem assina como CONTRATADA (representante da empresa).
+- **contratada_nome/email/cpf**: quem assina como CONTRATADA (representante da empresa).
 - **contratada_auto** (boolean): se true, usa `auth: "auto_signature"` na ClickSign (requer Termo de Assinatura Automatica previo).
-- **testemunha1_nome/email, testemunha2_nome/email**: testemunhas fixas da empresa.
+- **testemunha1_nome/email/cpf, testemunha2_nome/email/cpf**: testemunhas fixas da empresa.
+- CPF e enviado como campo `documentation` na ClickSign API (formato: 000.000.000-00).
 
 A ETAX nao assina — e gestora. Quem assina sao contratante, contratada e testemunhas.
 
-Tela de config: `/configuracoes` (admin Etax). Seleciona empresa, edita token + contratada + testemunhas.
+Tela de config: `/configuracoes` (admin Etax). Seleciona empresa, edita token + contratada + testemunhas (todos com CPF obrigatorio).
 
 ## ClickSign v3 - fluxo
 Base `https://app.clicksign.com/api/v3` (sandbox: `https://sandbox.clicksign.com/api/v3`).
@@ -104,13 +105,15 @@ Token vem de `workspace_clicksign_config.clicksign_token` (fallback: env `CLICKS
 
 1. POST `/envelopes` -> guarda `id`
 2. POST `/envelopes/{id}/documents` (por Modelo: `template.key` + `template.data`)
-3. POST `/envelopes/{id}/signers` — 4 signatarios:
-   - **Contratante** (dados da solicitacao): auth email, role `contractor`
-   - **Contratada** (config da empresa): auth email OU `auto_signature`, role `contractee`
-   - **Testemunha 1** (config da empresa): auth email, role `witness`
-   - **Testemunha 2** (config da empresa): auth email, role `witness`
-4. POST `/envelopes/{id}/requirements` (autenticacao + qualificacao para cada signatario)
+3. POST `/envelopes/{id}/signers` — 4 signatarios (cada um com `documentation` = CPF):
+   - **Contratante** (dados da solicitacao: nome, email, cpf): auth email, role `contractor`
+   - **Contratada** (config da empresa: contratada_nome/email/cpf): auth email OU `auto_signature`, role `contractee`
+   - **Testemunha 1** (config da empresa: testemunha1_nome/email/cpf): auth email, role `witness`
+   - **Testemunha 2** (config da empresa: testemunha2_nome/email/cpf): auth email, role `witness`
+4. POST `/envelopes/{id}/requirements` (autenticacao `provide_evidence` + qualificacao `agree` para cada signatario)
 5. PATCH `/envelopes/{id}` -> `{ status: "running" }`
+Validacao pre-geracao: config da empresa deve ter nome, email e CPF para contratada e ambas testemunhas. Se incompleta, bloqueia com mensagem indicando o que falta.
+Se `contratada_auto=true` e a ClickSign retornar erro, loga instrucao para assinar o Termo de Assinatura Automatica no painel ClickSign.
 Webhook `/api/webhooks/clicksign`: validar HMAC, atualizar `status_assinatura`, gravar em `eventos_assinatura`.
 Payloads exatos: `https://developers.clicksign.com/llms.txt`.
 
