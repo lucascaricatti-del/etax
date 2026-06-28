@@ -1,6 +1,7 @@
 export interface Workspace {
   id: string;
   nome: string;
+  nome_fantasia: string | null;
   cnpj: string | null;
   slug: string;
   ativo: boolean;

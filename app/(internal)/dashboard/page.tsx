@@ -88,13 +88,21 @@ export default async function DashboardPage() {
             <div className="grid gap-2">
               {recentes.map((c) => {
                 const contraparte = c.contraparte as unknown as { nome: string } | null;
+                const workspace = c.workspace as unknown as { id: string; nome: string; nome_fantasia: string | null } | null;
 
                 return (
                   <div key={c.id} className="etax-card py-3">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <p className="text-sm font-medium text-[var(--color-text)] truncate">
-                        {contraparte?.nome ?? "—"}
-                      </p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[var(--color-text)] truncate">
+                          {contraparte?.nome ?? "—"}
+                        </p>
+                        {isEtax && workspace && (
+                          <p className="text-xs text-[var(--color-text-mute)] truncate">
+                            {workspace.nome_fantasia || workspace.nome}
+                          </p>
+                        )}
+                      </div>
                       <StatusBadge status={c.status_assinatura} />
                     </div>
                     <div className="flex items-center gap-2 text-xs text-[var(--color-text-soft)]">
@@ -136,6 +144,7 @@ export default async function DashboardPage() {
             <div className="grid gap-2">
               {vencimentos.map((c) => {
                 const contraparte = c.contraparte as unknown as { nome: string } | null;
+                const workspace = c.workspace as unknown as { id: string; nome: string; nome_fantasia: string | null } | null;
                 const diasRestantes = Math.ceil(
                   (new Date(c.vigencia_fim).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
                 );
@@ -147,11 +156,18 @@ export default async function DashboardPage() {
                     className={`etax-card py-3 ${urgente ? "border-l-4 border-[var(--color-status-danger)]" : ""}`}
                   >
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <p className="text-sm font-medium text-[var(--color-text)] truncate">
-                        {contraparte?.nome ?? "—"}
-                      </p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[var(--color-text)] truncate">
+                          {contraparte?.nome ?? "—"}
+                        </p>
+                        {isEtax && workspace && (
+                          <p className="text-xs text-[var(--color-text-mute)] truncate">
+                            {workspace.nome_fantasia || workspace.nome}
+                          </p>
+                        )}
+                      </div>
                       <span
-                        className={`text-xs font-semibold ${
+                        className={`text-xs font-semibold flex-shrink-0 ${
                           urgente
                             ? "text-[var(--color-status-danger)]"
                             : "text-[var(--color-status-warn)]"

@@ -18,7 +18,7 @@ export function NovaSolicitacaoForm({
   defaultWorkspaceId,
 }: {
   tipos: TipoOption[];
-  workspaces: Array<{ id: string; nome: string }>;
+  workspaces: Array<{ id: string; nome: string; nome_fantasia?: string | null }>;
   isEtax: boolean;
   defaultWorkspaceId: string | null;
 }) {
@@ -136,7 +136,7 @@ export function NovaSolicitacaoForm({
             <option value="">Selecione a empresa...</option>
             {workspaces.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.nome}
+                {w.nome_fantasia || w.nome}
               </option>
             ))}
           </select>

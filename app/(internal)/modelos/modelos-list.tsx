@@ -13,6 +13,7 @@ interface TipoContrato {
 interface WorkspaceRef {
   id: string;
   nome: string;
+  nome_fantasia?: string | null;
 }
 
 interface ModeloRow {
@@ -76,7 +77,10 @@ export function ModelosList({
     const ids = m.modelo_empresas?.map((me) => me.workspace_id) ?? [];
     if (ids.length === 0) return "Nenhuma";
     const names = ids
-      .map((id) => workspaces.find((w) => w.id === id)?.nome ?? id.slice(0, 8))
+      .map((id) => {
+        const w = workspaces.find((w) => w.id === id);
+        return w ? (w.nome_fantasia || w.nome) : id.slice(0, 8);
+      })
       .join(", ");
     return names;
   }
@@ -168,7 +172,7 @@ function ModeloForm({
 }: {
   modelo: ModeloRow | null;
   tiposContrato: { id: string; nome: string }[];
-  workspaces: { id: string; nome: string }[];
+  workspaces: { id: string; nome: string; nome_fantasia?: string | null }[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -370,7 +374,7 @@ function ModeloForm({
                         onChange={() => toggleWs(ws.id)}
                         className="w-4 h-4 rounded accent-[var(--color-accent)]"
                       />
-                      <span className="text-sm text-[var(--color-text)]">{ws.nome}</span>
+                      <span className="text-sm text-[var(--color-text)]">{ws.nome_fantasia || ws.nome}</span>
                     </label>
                   ))
                 )}

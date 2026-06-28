@@ -24,7 +24,7 @@ export function Filters({
   tipoAtual?: string;
   statusAtual?: string;
   isEtax: boolean;
-  workspaces: Array<{ id: string; nome: string }>;
+  workspaces: Array<{ id: string; nome: string; nome_fantasia?: string | null }>;
   empresaAtual?: string;
 }) {
   const router = useRouter();
@@ -51,7 +51,7 @@ export function Filters({
           <option value="">Todas as empresas</option>
           {workspaces.map((w) => (
             <option key={w.id} value={w.id}>
-              {w.nome}
+              {w.nome_fantasia || w.nome}
             </option>
           ))}
         </select>

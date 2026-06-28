@@ -13,6 +13,7 @@ export default async function AssinaturasPage() {
   const { pendentes, finalizados } = await fetchContratosPorAssinatura(sessao);
 
   const pendingCount = pendentes.data?.length ?? 0;
+  const isEtax = sessao.isEtax;
 
   return (
     <div>
@@ -44,13 +45,21 @@ export default async function AssinaturasPage() {
           <div className="grid gap-3">
             {pendentes.data!.map((c) => {
               const contraparte = c.contraparte as unknown as { nome: string; cpf_cnpj: string } | null;
+              const workspace = c.workspace as unknown as { id: string; nome: string; nome_fantasia: string | null } | null;
 
               return (
                 <div key={c.id} className="etax-card">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="font-semibold text-sm text-[var(--color-text)] truncate">
-                      {contraparte?.nome ?? "—"}
-                    </p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-[var(--color-text)] truncate">
+                        {contraparte?.nome ?? "—"}
+                      </p>
+                      {isEtax && workspace && (
+                        <p className="text-xs text-[var(--color-text-mute)] truncate mt-0.5">
+                          {workspace.nome_fantasia || workspace.nome}
+                        </p>
+                      )}
+                    </div>
                     <StatusBadge status={c.status_assinatura} />
                   </div>
 
@@ -89,6 +98,7 @@ export default async function AssinaturasPage() {
           <div className="grid gap-3">
             {finalizados.data.map((c) => {
               const contraparte = c.contraparte as unknown as { nome: string; cpf_cnpj: string } | null;
+              const workspace = c.workspace as unknown as { id: string; nome: string; nome_fantasia: string | null } | null;
 
               return (
                 <Link
@@ -97,9 +107,16 @@ export default async function AssinaturasPage() {
                   className="etax-card block hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
                 >
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <p className="font-medium text-sm text-[var(--color-text)] truncate">
-                      {contraparte?.nome ?? "—"}
-                    </p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-[var(--color-text)] truncate">
+                        {contraparte?.nome ?? "—"}
+                      </p>
+                      {isEtax && workspace && (
+                        <p className="text-xs text-[var(--color-text-mute)] truncate mt-0.5">
+                          {workspace.nome_fantasia || workspace.nome}
+                        </p>
+                      )}
+                    </div>
                     <StatusBadge status={c.status_assinatura} />
                   </div>
 

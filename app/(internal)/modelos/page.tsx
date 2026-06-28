@@ -16,7 +16,7 @@ export default async function ModelosPage() {
       .select("*, tipo_contrato:tipos_contrato(id, nome, slug), modelo_empresas(workspace_id)")
       .order("criado_em", { ascending: false }),
     supabase.from("tipos_contrato").select("id, nome, slug").eq("ativo", true).order("nome"),
-    supabase.from("workspaces").select("id, nome").eq("ativo", true).order("nome"),
+    supabase.from("workspaces").select("id, nome, nome_fantasia").eq("ativo", true).order("nome"),
   ]);
 
   console.log("[Modelos] page query:", {

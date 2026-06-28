@@ -3,97 +3,103 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function NovaEmpresaForm() {
+export function EditEmpresaForm({
+  workspace,
+}: {
+  workspace: {
+    id: string;
+    nome: string;
+    nome_fantasia: string | null;
+    cnpj: string | null;
+  };
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [nome, setNome] = useState("");
-  const [nomeFantasia, setNomeFantasia] = useState("");
-  const [cnpj, setCnpj] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [nome, setNome] = useState(workspace.nome);
+  const [nomeFantasia, setNomeFantasia] = useState(
+    workspace.nome_fantasia ?? ""
+  );
+  const [cnpj, setCnpj] = useState(workspace.cnpj ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSave() {
+    if (!nome.trim()) {
+      setError("Razão social é obrigatória");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/empresas", {
-      method: "POST",
+    const res = await fetch(`/api/empresas/${workspace.id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        nome,
-        nome_fantasia: nomeFantasia || null,
-        cnpj: cnpj || null,
+        nome: nome.trim(),
+        nome_fantasia: nomeFantasia.trim() || null,
+        cnpj: cnpj.trim() || null,
       }),
     });
 
     if (!res.ok) {
       const body = await res.json();
-      setError(body.error || "Erro ao criar empresa");
+      setError(body.error || "Erro ao salvar");
       setLoading(false);
       return;
     }
 
-    setNome("");
-    setNomeFantasia("");
-    setCnpj("");
-    setOpen(false);
+    setEditing(false);
     setLoading(false);
     router.refresh();
   }
 
-  if (!open) {
+  if (!editing) {
     return (
       <button
-        onClick={() => setOpen(true)}
-        className="etax-btn etax-btn-primary min-h-[48px]"
+        onClick={() => setEditing(true)}
+        className="text-sm text-[var(--color-primary)] hover:underline mt-2"
       >
-        Nova empresa
+        Editar dados
       </button>
     );
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="etax-card space-y-4"
-    >
-      <h2 className="etax-section-label">Nova empresa</h2>
+    <div className="space-y-3 mt-3 pt-3 border-t border-[var(--color-line)]">
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-soft)] mb-1">
-          Razão Social <span className="text-[var(--color-status-danger)]">*</span>
+        <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+          Razão Social
         </label>
         <input
           type="text"
-          required
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          placeholder="Razão social da empresa"
           className="etax-input min-h-[48px]"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-soft)] mb-1">
+        <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
           Nome Fantasia
         </label>
         <input
           type="text"
           value={nomeFantasia}
           onChange={(e) => setNomeFantasia(e.target.value)}
-          placeholder="Nome fantasia (exibido nas telas)"
           className="etax-input min-h-[48px]"
+          placeholder="Nome fantasia (exibido nas telas)"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-soft)] mb-1">
+        <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
           CNPJ
         </label>
         <input
           type="text"
           value={cnpj}
           onChange={(e) => setCnpj(e.target.value)}
-          placeholder="00.000.000/0000-00 (opcional)"
           className="etax-input min-h-[48px]"
+          placeholder="00.000.000/0000-00"
         />
       </div>
 
@@ -105,20 +111,25 @@ export function NovaEmpresaForm() {
 
       <div className="flex gap-2">
         <button
-          type="submit"
+          onClick={handleSave}
           disabled={loading}
           className="etax-btn etax-btn-primary min-h-[48px]"
         >
           {loading ? "Salvando..." : "Salvar"}
         </button>
         <button
-          type="button"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            setEditing(false);
+            setNome(workspace.nome);
+            setNomeFantasia(workspace.nome_fantasia ?? "");
+            setCnpj(workspace.cnpj ?? "");
+            setError("");
+          }}
           className="etax-btn etax-btn-ghost min-h-[48px]"
         >
           Cancelar
         </button>
       </div>
-    </form>
+    </div>
   );
 }

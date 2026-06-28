@@ -12,7 +12,7 @@ export function ContratoForm({
 }: {
   tipoContrato: TipoContrato;
   isEtax: boolean;
-  workspaces: Array<{ id: string; nome: string }>;
+  workspaces: Array<{ id: string; nome: string; nome_fantasia?: string | null }>;
   defaultWorkspaceId: string | null;
 }) {
   const [dados, setDados] = useState<Record<string, string | number>>({});
@@ -111,7 +111,7 @@ export function ContratoForm({
             <option value="">Selecione a empresa...</option>
             {workspaces.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.nome}
+                {w.nome_fantasia || w.nome}
               </option>
             ))}
           </select>

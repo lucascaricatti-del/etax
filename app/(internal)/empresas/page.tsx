@@ -12,7 +12,7 @@ export default async function EmpresasPage() {
 
   const { data: workspaces } = await supabase
     .from("workspaces")
-    .select("id, nome, cnpj, slug, ativo, criado_em")
+    .select("id, nome, nome_fantasia, cnpj, slug, ativo, criado_em")
     .order("nome");
 
   // Fetch member counts
@@ -52,69 +52,60 @@ export default async function EmpresasPage() {
 
       <NovaEmpresaForm />
 
-      <div className="etax-card mt-6 overflow-x-auto p-0">
-        <table className="etax-table">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>CNPJ</th>
-              <th>Membros</th>
-              <th>Solicitações</th>
-              <th>Status</th>
-              <th className="text-right">Ação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="!text-center !py-8 text-[var(--color-text-mute)]"
+      {items.length === 0 ? (
+        <div className="etax-card mt-6 text-center py-8">
+          <p className="text-sm text-[var(--color-text-mute)]">
+            Nenhuma empresa cadastrada.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3 mt-6">
+          {items.map((w) => (
+            <Link
+              key={w.id}
+              href={`/empresas/${w.id}`}
+              className="etax-card block hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-[var(--color-text)] truncate">
+                    {w.nome_fantasia || w.nome}
+                  </p>
+                  {w.nome_fantasia && (
+                    <p className="text-xs text-[var(--color-text-mute)] truncate mt-0.5">
+                      {w.nome}
+                    </p>
+                  )}
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium flex-shrink-0 ${
+                    w.ativo
+                      ? "bg-[var(--color-status-ok-bg)] text-[var(--color-status-ok)]"
+                      : "bg-[var(--color-status-info-bg)] text-[var(--color-status-info)]"
+                  }`}
                 >
-                  Nenhuma empresa cadastrada.
-                </td>
-              </tr>
-            ) : (
-              items.map((w) => (
-                <tr key={w.id}>
-                  <td className="font-medium">{w.nome}</td>
-                  <td className="text-[var(--color-text-soft)]">
-                    {w.cnpj ?? "—"}
-                  </td>
-                  <td className="text-[var(--color-text-soft)]">
-                    {membersMap.get(w.id) ?? 0}
-                  </td>
-                  <td className="text-[var(--color-text-soft)]">
-                    {solsMap.get(w.id) ?? 0}
-                  </td>
-                  <td>
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        w.ativo
-                          ? "bg-[var(--color-status-ok-bg)] text-[var(--color-status-ok)]"
-                          : "bg-[var(--color-status-info-bg)] text-[var(--color-status-info)]"
-                      }`}
-                    >
-                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${
-                        w.ativo ? "bg-[var(--color-status-ok)]" : "bg-[var(--color-status-info)]"
-                      }`} />
-                      {w.ativo ? "Ativo" : "Inativo"}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <Link
-                      href={`/empresas/${w.id}`}
-                      className="text-sm font-medium text-[var(--color-text-soft)] hover:text-[var(--color-text)]"
-                    >
-                      Ver
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  <span
+                    className={`inline-block h-1.5 w-1.5 rounded-full ${
+                      w.ativo
+                        ? "bg-[var(--color-status-ok)]"
+                        : "bg-[var(--color-status-info)]"
+                    }`}
+                  />
+                  {w.ativo ? "Ativo" : "Inativo"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-[var(--color-text-soft)]">
+                <span>{w.cnpj ?? "Sem CNPJ"}</span>
+                <span>·</span>
+                <span>{membersMap.get(w.id) ?? 0} membros</span>
+                <span>·</span>
+                <span>{solsMap.get(w.id) ?? 0} solicitações</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

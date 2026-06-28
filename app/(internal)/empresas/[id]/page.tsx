@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { InviteForm } from "./invite-form";
+import { EditEmpresaForm } from "./edit-empresa-form";
 
 export default async function EmpresaDetalhePage({
   params,
@@ -64,6 +65,8 @@ export default async function EmpresaDetalhePage({
     .eq("workspace_id", id)
     .order("criado_em", { ascending: false });
 
+  const displayName = workspace.nome_fantasia || workspace.nome;
+
   return (
     <div>
       <Link
@@ -73,10 +76,17 @@ export default async function EmpresaDetalhePage({
         &larr; Voltar para empresas
       </Link>
 
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
-          {workspace.nome}
-        </h1>
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+            {displayName}
+          </h1>
+          {workspace.nome_fantasia && (
+            <p className="text-sm text-[var(--color-text-mute)] mt-0.5">
+              {workspace.nome}
+            </p>
+          )}
+        </div>
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
             workspace.ativo
@@ -97,6 +107,14 @@ export default async function EmpresaDetalhePage({
           <h2 className="etax-section-label">Dados</h2>
           <dl className="space-y-2 text-sm">
             <div>
+              <dt className="text-[var(--color-text-mute)]">Razão Social</dt>
+              <dd className="font-medium">{workspace.nome}</dd>
+            </div>
+            <div>
+              <dt className="text-[var(--color-text-mute)]">Nome Fantasia</dt>
+              <dd className="font-medium">{workspace.nome_fantasia ?? "—"}</dd>
+            </div>
+            <div>
               <dt className="text-[var(--color-text-mute)]">CNPJ</dt>
               <dd className="font-medium">{workspace.cnpj ?? "—"}</dd>
             </div>
@@ -111,6 +129,14 @@ export default async function EmpresaDetalhePage({
               </dd>
             </div>
           </dl>
+          <EditEmpresaForm
+            workspace={{
+              id: workspace.id,
+              nome: workspace.nome,
+              nome_fantasia: workspace.nome_fantasia,
+              cnpj: workspace.cnpj,
+            }}
+          />
         </div>
 
         {/* Membros */}

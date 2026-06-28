@@ -18,7 +18,7 @@ export default async function SolicitacoesPage({
   let query = supabase
     .from("solicitacoes")
     .select(
-      "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), workspace:workspaces(id, nome)"
+      "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), workspace:workspaces(id, nome, nome_fantasia)"
     )
     .order("criado_em", { ascending: false });
 
@@ -56,18 +56,18 @@ export default async function SolicitacoesPage({
     .order("nome");
 
   // Fetch workspaces for empresa filter (etax only)
-  let workspaces: Array<{ id: string; nome: string }> = [];
+  let workspaces: Array<{ id: string; nome: string; nome_fantasia: string | null }> = [];
   if (sessao?.isEtax) {
     const { data } = await supabase
       .from("workspaces")
-      .select("id, nome")
+      .select("id, nome, nome_fantasia")
       .eq("ativo", true)
       .order("nome");
     workspaces = data ?? [];
   }
 
   const items = (solicitacoes ?? []) as unknown as (SolicitacaoComDetalhes & {
-    workspace?: { id: string; nome: string } | null;
+    workspace?: { id: string; nome: string; nome_fantasia: string | null } | null;
   })[];
 
   // Resolve defaultWorkspaceId for cliente
@@ -132,7 +132,7 @@ export default async function SolicitacoesPage({
                   <td className="font-medium">{s.contraparte?.nome ?? "—"}</td>
                   {sessao?.isEtax && (
                     <td className="text-[var(--color-text-soft)]">
-                      {s.workspace?.nome ?? "—"}
+                      {s.workspace?.nome_fantasia || s.workspace?.nome || "—"}
                     </td>
                   )}
                   <td className="text-[var(--color-text-soft)]">

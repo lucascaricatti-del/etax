@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { nome, cnpj } = body;
+  const { nome, nome_fantasia, cnpj } = body;
 
   if (!nome || typeof nome !== "string" || nome.trim().length < 2) {
     return NextResponse.json(
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from("workspaces")
-    .insert({ nome: nome.trim(), cnpj: cnpj || null, slug, ativo: true })
+    .insert({ nome: nome.trim(), nome_fantasia: nome_fantasia?.trim() || null, cnpj: cnpj || null, slug, ativo: true })
     .select("id")
     .single();
 

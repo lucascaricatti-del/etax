@@ -27,14 +27,14 @@ export default async function ContratoPage({
   const tipoContrato = tipo as TipoContrato;
 
   // Resolve workspace info
-  let workspaces: Array<{ id: string; nome: string }> = [];
+  let workspaces: Array<{ id: string; nome: string; nome_fantasia: string | null }> = [];
   let defaultWorkspaceId: string | null = null;
 
   if (sessao.isEtax) {
     // Etax: fetch all workspaces for selector
     const { data } = await supabase
       .from("workspaces")
-      .select("id, nome")
+      .select("id, nome, nome_fantasia")
       .eq("ativo", true)
       .order("nome");
     workspaces = data ?? [];
