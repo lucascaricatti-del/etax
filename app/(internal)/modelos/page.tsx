@@ -19,11 +19,6 @@ export default async function ModelosPage() {
     supabase.from("workspaces").select("id, nome, nome_fantasia").eq("ativo", true).order("nome"),
   ]);
 
-  console.log("[Modelos] page query:", {
-    modelos: modelosRes.data?.length ?? 0,
-    error: modelosRes.error?.message ?? null,
-  });
-
   return (
     <ModelosList
       modelos={modelosRes.data ?? []}

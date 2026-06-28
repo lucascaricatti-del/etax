@@ -15,56 +15,57 @@ export default async function SolicitacoesPage({
   const sessao = await getSessao();
   const supabase = createAdminClient();
 
-  let query = supabase
+  // Build solicitacoes query with specific fields (avoid select *)
+  let solQuery = supabase
     .from("solicitacoes")
     .select(
-      "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), workspace:workspaces(id, nome, nome_fantasia), contrato:contratos!contratos_solicitacao_id_fkey(status_assinatura)"
+      "id, status, criado_em, workspace_id, contraparte:contrapartes(nome), tipo_contrato:tipos_contrato(id, nome), workspace:workspaces(id, nome, nome_fantasia), contrato:contratos!contratos_solicitacao_id_fkey(status_assinatura)"
     )
-    .order("criado_em", { ascending: false });
+    .order("criado_em", { ascending: false })
+    .limit(200);
 
   // Scope by workspace
   if (sessao?.isEtax) {
-    // Etax: optionally filter by empresa
     if (empresa) {
-      query = query.eq("workspace_id", empresa);
+      solQuery = solQuery.eq("workspace_id", empresa);
     }
   } else {
-    // Cliente: only their workspace(s)
     const ids = sessao?.workspaceIds ?? [];
     if (ids.length > 0) {
-      query = query.in("workspace_id", ids);
+      solQuery = solQuery.in("workspace_id", ids);
     } else {
-      query = query.eq("workspace_id", "00000000-0000-0000-0000-000000000000");
+      solQuery = solQuery.eq("workspace_id", "00000000-0000-0000-0000-000000000000");
     }
   }
 
   if (tipo) {
-    query = query.eq("tipo_contrato_id", tipo);
+    solQuery = solQuery.eq("tipo_contrato_id", tipo);
   }
 
   if (status) {
-    query = query.eq("status", status);
+    solQuery = solQuery.eq("status", status);
   }
 
-  const { data: solicitacoes } = await query;
-
-  // Fetch tipos for filter dropdown + form fields
-  const { data: tipos } = await supabase
-    .from("tipos_contrato")
-    .select("id, nome, schema_campos")
-    .eq("ativo", true)
-    .order("nome");
-
-  // Fetch workspaces for empresa filter (etax only)
-  let workspaces: Array<{ id: string; nome: string; nome_fantasia: string | null }> = [];
-  if (sessao?.isEtax) {
-    const { data } = await supabase
-      .from("workspaces")
-      .select("id, nome, nome_fantasia")
+  // Run all independent queries in parallel
+  const [solResult, tiposResult, wsResult] = await Promise.all([
+    solQuery,
+    supabase
+      .from("tipos_contrato")
+      .select("id, nome, schema_campos")
       .eq("ativo", true)
-      .order("nome");
-    workspaces = data ?? [];
-  }
+      .order("nome"),
+    sessao?.isEtax
+      ? supabase
+          .from("workspaces")
+          .select("id, nome, nome_fantasia")
+          .eq("ativo", true)
+          .order("nome")
+      : Promise.resolve({ data: [] as { id: string; nome: string; nome_fantasia: string | null }[] }),
+  ]);
+
+  const solicitacoes = solResult.data;
+  const tipos = tiposResult.data;
+  const workspaces = (wsResult.data ?? []) as { id: string; nome: string; nome_fantasia: string | null }[];
 
   const items = (solicitacoes ?? []) as unknown as (SolicitacaoComDetalhes & {
     workspace?: { id: string; nome: string; nome_fantasia: string | null } | null;

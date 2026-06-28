@@ -10,34 +10,23 @@ export default async function EmpresasPage() {
 
   const supabase = createAdminClient();
 
+  // Single query with embedded relationship counts
   const { data: workspaces } = await supabase
     .from("workspaces")
-    .select("id, nome, nome_fantasia, cnpj, slug, ativo, criado_em")
+    .select("id, nome, nome_fantasia, cnpj, slug, ativo, criado_em, workspace_members(count), solicitacoes(count)")
     .order("nome");
 
-  // Fetch member counts
-  const { data: memberCounts } = await supabase
-    .from("workspace_members")
-    .select("workspace_id");
-
-  // Fetch solicitacao counts
-  const { data: solCounts } = await supabase
-    .from("solicitacoes")
-    .select("workspace_id");
-
-  const membersMap = new Map<string, number>();
-  for (const m of memberCounts ?? []) {
-    membersMap.set(m.workspace_id, (membersMap.get(m.workspace_id) ?? 0) + 1);
-  }
-
-  const solsMap = new Map<string, number>();
-  for (const s of solCounts ?? []) {
-    if (s.workspace_id) {
-      solsMap.set(s.workspace_id, (solsMap.get(s.workspace_id) ?? 0) + 1);
-    }
-  }
-
-  const items = workspaces ?? [];
+  const items = (workspaces ?? []) as unknown as Array<{
+    id: string;
+    nome: string;
+    nome_fantasia: string | null;
+    cnpj: string | null;
+    slug: string;
+    ativo: boolean;
+    criado_em: string;
+    workspace_members: [{ count: number }];
+    solicitacoes: [{ count: number }];
+  }>;
 
   return (
     <div>
@@ -98,9 +87,9 @@ export default async function EmpresasPage() {
               <div className="flex items-center gap-3 text-xs text-[var(--color-text-soft)]">
                 <span>{w.cnpj ?? "Sem CNPJ"}</span>
                 <span>·</span>
-                <span>{membersMap.get(w.id) ?? 0} membros</span>
+                <span>{w.workspace_members?.[0]?.count ?? 0} membros</span>
                 <span>·</span>
-                <span>{solsMap.get(w.id) ?? 0} solicitações</span>
+                <span>{w.solicitacoes?.[0]?.count ?? 0} solicitações</span>
               </div>
             </Link>
           ))}

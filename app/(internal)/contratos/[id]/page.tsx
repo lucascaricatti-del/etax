@@ -75,59 +75,63 @@ export default async function ContratoDetailPage({
   const isDistratado = contrato.status_assinatura === "distratado";
   const isAditivo = contrato.natureza_documento === "aditivo";
 
-  // Fetch possible parent contracts for "marcar como aditivo"
-  let possiveisPais: { id: string; label: string }[] = [];
-  if (sessao.isAdmin && contrato.natureza_documento === "principal") {
-    const { data: pais } = await supabase
-      .from("contratos")
-      .select("id, tipo, contraparte:contrapartes(nome)")
-      .eq("workspace_id", contrato.workspace_id)
-      .eq("natureza_documento", "principal")
-      .eq("status_assinatura", "assinado")
-      .is("excluido_em", null)
-      .neq("id", contrato.id)
-      .order("criado_em", { ascending: false })
-      .limit(50);
+  // Fetch related data in parallel (all depend on contrato but not on each other)
+  const [paisResult, paiResult, aditivosResult] = await Promise.all([
+    // Possible parent contracts for "marcar como aditivo" (admin only)
+    sessao.isAdmin && contrato.natureza_documento === "principal"
+      ? supabase
+          .from("contratos")
+          .select("id, tipo, contraparte:contrapartes(nome)")
+          .eq("workspace_id", contrato.workspace_id)
+          .eq("natureza_documento", "principal")
+          .eq("status_assinatura", "assinado")
+          .is("excluido_em", null)
+          .neq("id", contrato.id)
+          .order("criado_em", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: null }),
 
-    possiveisPais = (pais ?? []).map((p) => {
-      const cp = p.contraparte as unknown as { nome: string } | null;
-      return {
-        id: p.id,
-        label: `${cp?.nome ?? "—"} — ${p.tipo}`,
-      };
-    });
-  }
+    // Parent contrato if aditivo
+    isAditivo && contrato.contrato_pai_id
+      ? supabase
+          .from("contratos")
+          .select("id, tipo, contraparte:contrapartes(nome)")
+          .eq("id", contrato.contrato_pai_id)
+          .single()
+      : Promise.resolve({ data: null }),
 
-  // Fetch parent contrato if aditivo
+    // Child aditivos if principal
+    contrato.natureza_documento === "principal"
+      ? supabase
+          .from("contratos")
+          .select("id, tipo, valor, criado_em, status_assinatura, contraparte:contrapartes(nome)")
+          .eq("contrato_pai_id", contrato.id)
+          .is("excluido_em", null)
+          .order("criado_em", { ascending: false })
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const possiveisPais = (paisResult.data ?? []).map((p) => {
+    const cp = (p as { contraparte: unknown }).contraparte as { nome: string } | null;
+    return {
+      id: (p as { id: string }).id,
+      label: `${cp?.nome ?? "—"} — ${(p as { tipo: string }).tipo}`,
+    };
+  });
+
   let contratoPai: { id: string; tipo: string; contraparte_nome: string } | null = null;
-  if (isAditivo && contrato.contrato_pai_id) {
-    const { data: pai } = await supabase
-      .from("contratos")
-      .select("id, tipo, contraparte:contrapartes(nome)")
-      .eq("id", contrato.contrato_pai_id)
-      .single();
-    if (pai) {
-      const cpPai = pai.contraparte as unknown as { nome: string } | null;
-      contratoPai = {
-        id: pai.id,
-        tipo: pai.tipo,
-        contraparte_nome: cpPai?.nome ?? "—",
-      };
-    }
+  if (paiResult.data) {
+    const pai = paiResult.data as { id: string; tipo: string; contraparte: unknown };
+    const cpPai = pai.contraparte as { nome: string } | null;
+    contratoPai = {
+      id: pai.id,
+      tipo: pai.tipo,
+      contraparte_nome: cpPai?.nome ?? "—",
+    };
   }
 
-  // Fetch child contratos (aditivos) if principal
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let aditivos: any[] = [];
-  if (contrato.natureza_documento === "principal") {
-    const { data } = await supabase
-      .from("contratos")
-      .select("id, tipo, valor, criado_em, status_assinatura, contraparte:contrapartes(nome)")
-      .eq("contrato_pai_id", contrato.id)
-      .is("excluido_em", null)
-      .order("criado_em", { ascending: false });
-    aditivos = data ?? [];
-  }
+  const aditivos: any[] = aditivosResult.data ?? [];
 
   return (
     <div>

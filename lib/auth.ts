@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -9,7 +10,11 @@ export interface Sessao {
   workspaceIds: string[];
 }
 
-export async function getSessao(): Promise<Sessao | null> {
+/**
+ * Resolves the current user session. Cached per request via React cache()
+ * so multiple calls in layout + page don't repeat auth + DB queries.
+ */
+export const getSessao = cache(async (): Promise<Sessao | null> => {
   // Cookie client — only for identifying the logged-in user via session cookies
   const authClient = await createClient();
 
@@ -22,21 +27,24 @@ export async function getSessao(): Promise<Sessao | null> {
   // Admin client — bypasses RLS for profile & membership reads
   const admin = createAdminClient();
 
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("id, nome, tipo_usuario, papel_etax")
-    .eq("id", user.id)
-    .single();
+  // Run profile + memberships in parallel (independent queries)
+  const [profileResult, membershipsResult] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, nome, tipo_usuario, papel_etax")
+      .eq("id", user.id)
+      .single(),
+    admin
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("user_id", user.id),
+  ]);
 
+  const profile = profileResult.data;
   const isEtax = profile?.tipo_usuario === "etax";
   const isAdmin = isEtax && profile?.papel_etax === "admin";
 
-  const { data: memberships } = await admin
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", user.id);
-
-  const workspaceIds = (memberships ?? []).map(
+  const workspaceIds = (membershipsResult.data ?? []).map(
     (m: { workspace_id: string }) => m.workspace_id
   );
 
@@ -47,4 +55,4 @@ export async function getSessao(): Promise<Sessao | null> {
     isAdmin,
     workspaceIds,
   };
-}
+});

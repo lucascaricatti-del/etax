@@ -21,20 +21,27 @@ export default async function DashboardPage({
 
   const isEtax = sessao.isEtax;
 
-  // Fetch workspaces for filter dropdown (Etax only)
-  let workspaces: Array<{ id: string; nome: string; nome_fantasia: string | null }> = [];
-  if (isEtax) {
-    const supabase = createAdminClient();
-    const { data } = await supabase
-      .from("workspaces")
-      .select("id, nome, nome_fantasia")
-      .eq("ativo", true)
-      .order("nome");
-    workspaces = data ?? [];
-  }
+  // Fetch all dashboard data in parallel
+  const workspacesPromise = isEtax
+    ? createAdminClient()
+        .from("workspaces")
+        .select("id, nome, nome_fantasia")
+        .eq("ativo", true)
+        .order("nome")
+    : Promise.resolve({ data: [] as { id: string; nome: string; nome_fantasia: string | null }[] });
 
-  // Fetch operational data always; financial only for Etax
-  const operacional = await fetchDashboardData(sessao);
+  const operacionalPromise = fetchDashboardData(sessao);
+  const financeiroPromise = isEtax
+    ? fetchDashboardFinanceiro(sessao, { mes: params.mes, workspaceId: params.empresa })
+    : Promise.resolve(null);
+
+  const [wsResult, operacional, financeiro] = await Promise.all([
+    workspacesPromise,
+    operacionalPromise,
+    financeiroPromise,
+  ]);
+
+  const workspaces = (wsResult.data ?? []) as { id: string; nome: string; nome_fantasia: string | null }[];
 
   const {
     totalAtivos,
@@ -216,37 +223,34 @@ export default async function DashboardPage({
   }
 
   // ─── ETAX DASHBOARD ───────────────────────────────────
-
-  const financeiro = await fetchDashboardFinanceiro(sessao, {
-    mes: params.mes,
-    workspaceId: params.empresa,
-  });
+  // financeiro is guaranteed non-null here (client returns early above)
+  const fin = financeiro!;
 
   // Financial KPIs
   const financialKpis = [
     {
       label: "Receita líquida",
-      value: formatBRL(financeiro.receitaLiquida),
-      color: financeiro.receitaLiquida > 0
+      value: formatBRL(fin.receitaLiquida),
+      color: fin.receitaLiquida > 0
         ? "text-[var(--color-status-ok)]"
         : "text-[var(--color-text)]",
     },
     {
       label: "Receita bruta",
-      value: formatBRL(financeiro.receitaBruta),
+      value: formatBRL(fin.receitaBruta),
       color: "text-[var(--color-text)]",
     },
     {
       label: "Churn",
-      value: financeiro.churn > 0 ? `- ${formatBRL(financeiro.churn)}` : formatBRL(0),
-      color: financeiro.churn > 0
+      value: fin.churn > 0 ? `- ${formatBRL(fin.churn)}` : formatBRL(0),
+      color: fin.churn > 0
         ? "text-[var(--color-status-danger)]"
         : "text-[var(--color-text-mute)]",
     },
     {
       label: "Despesas",
-      value: formatBRL(financeiro.despesaTotal),
-      color: financeiro.despesaTotal > 0
+      value: formatBRL(fin.despesaTotal),
+      color: fin.despesaTotal > 0
         ? "text-[var(--color-status-warn)]"
         : "text-[var(--color-text-mute)]",
     },
@@ -261,7 +265,7 @@ export default async function DashboardPage({
   ];
 
   // Format month label
-  const [fYear, fMonth] = financeiro.mes.split("-").map(Number);
+  const [fYear, fMonth] = fin.mes.split("-").map(Number);
   const mesLabel = new Date(fYear, fMonth - 1).toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
@@ -296,13 +300,13 @@ export default async function DashboardPage({
       </section>
 
       {/* Per-empresa breakdown */}
-      {financeiro.porEmpresa.length > 0 && !params.empresa && (
+      {fin.porEmpresa.length > 0 && !params.empresa && (
         <section className="mb-8">
           <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-3">
             Por empresa — {mesLabel}
           </h2>
           <div className="grid gap-2">
-            {financeiro.porEmpresa.map((ws) => (
+            {fin.porEmpresa.map((ws) => (
               <div key={ws.workspaceId} className="etax-card py-3">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <p className="text-sm font-medium text-[var(--color-text)] truncate">

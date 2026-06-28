@@ -12,28 +12,28 @@ export default async function ConfeccaoPage() {
 
   const supabase = createAdminClient();
 
-  // Pending approvals
-  const { data: pendentes } = await supabase
-    .from("solicitacoes")
-    .select(
-      "id, status, dados, criado_em, tipo_contrato_id, contraparte:contrapartes(nome), tipo_contrato:tipos_contrato(nome), modelo:modelos(nome, versao)"
-    )
-    .eq("status", "aguardando_aprovacao")
-    .order("criado_em", { ascending: true });
-
-  // Recently approved (last 7 days)
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const { data: aprovadas } = await supabase
-    .from("solicitacoes")
-    .select(
-      "id, status, dados, aprovado_em, contraparte:contrapartes(nome), tipo_contrato:tipos_contrato(nome), modelo:modelos(nome, versao)"
-    )
-    .eq("status", "aprovada")
-    .gte("aprovado_em", sevenDaysAgo.toISOString())
-    .order("aprovado_em", { ascending: false })
-    .limit(20);
+  // Fetch both in parallel
+  const [{ data: pendentes }, { data: aprovadas }] = await Promise.all([
+    supabase
+      .from("solicitacoes")
+      .select(
+        "id, status, dados, criado_em, tipo_contrato_id, contraparte:contrapartes(nome), tipo_contrato:tipos_contrato(nome), modelo:modelos(nome, versao)"
+      )
+      .eq("status", "aguardando_aprovacao")
+      .order("criado_em", { ascending: true }),
+    supabase
+      .from("solicitacoes")
+      .select(
+        "id, status, dados, aprovado_em, contraparte:contrapartes(nome), tipo_contrato:tipos_contrato(nome), modelo:modelos(nome, versao)"
+      )
+      .eq("status", "aprovada")
+      .gte("aprovado_em", sevenDaysAgo.toISOString())
+      .order("aprovado_em", { ascending: false })
+      .limit(20),
+  ]);
 
   const pendingCount = pendentes?.length ?? 0;
 

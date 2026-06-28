@@ -108,13 +108,6 @@ export async function fetchContratos(
 
   const { data, error, count } = await query;
 
-  console.log("[fetchContratos]", {
-    count,
-    page,
-    filters: { workspaceId, tipo, statusAssinatura, mes, busca },
-    error: error?.message ?? null,
-  });
-
   return { data, error, count };
 }
 
@@ -145,13 +138,6 @@ export async function fetchContratosPorAssinatura(sessao: Sessao) {
   qFinalizados = applyWorkspaceScope(qFinalizados, sessao) as typeof qFinalizados;
 
   const [pendentes, finalizados] = await Promise.all([qPendentes, qFinalizados]);
-
-  console.log("[fetchContratosPorAssinatura]", {
-    pendentes: pendentes.data?.length ?? 0,
-    pendentes_error: pendentes.error?.message ?? null,
-    finalizados: finalizados.data?.length ?? 0,
-    finalizados_error: finalizados.error?.message ?? null,
-  });
 
   return { pendentes, finalizados };
 }
@@ -221,17 +207,6 @@ export async function fetchDashboardData(sessao: Sessao) {
       return q;
     })(),
   ]);
-
-  console.log("[fetchDashboardData]", {
-    totalAtivos: totalAtivos.count,
-    aguardandoAssinatura: aguardandoAssinatura.count,
-    assinadosMes: assinadosMes.count,
-    aVencer30: aVencer30.count,
-    aguardandoAprovacao: aguardandoAprovacao.count,
-    recentes: recentes.data?.length ?? 0,
-    recentes_error: recentes.error?.message ?? null,
-    vencimentos: vencimentos.data?.length ?? 0,
-  });
 
   return {
     totalAtivos: totalAtivos.count ?? 0,
@@ -391,17 +366,6 @@ export async function fetchDashboardFinanceiro(
   const porEmpresa = Array.from(wsMap.values()).sort((a, b) =>
     a.displayName.localeCompare(b.displayName)
   );
-
-  console.log("[fetchDashboardFinanceiro]", {
-    mes: mesStr,
-    assinados: assinados.length,
-    distratados: distratados.length,
-    receitaBruta,
-    churn,
-    receitaLiquida,
-    despesaTotal,
-    empresas: porEmpresa.length,
-  });
 
   return {
     mes: mesStr,
