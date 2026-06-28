@@ -8,10 +8,10 @@ import type { Sessao } from "@/lib/auth";
  */
 
 const CONTRATO_SELECT_FULL =
-  "id, tipo, valor, status_assinatura, status_vigencia, vigencia_inicio, vigencia_fim, assinado_em, criado_em, pdf_assinado_path, workspace_id, contraparte:contrapartes(nome, cpf_cnpj), workspace:workspaces(id, nome, nome_fantasia)";
+  "id, tipo, valor, status_assinatura, status_vigencia, vigencia_inicio, vigencia_fim, assinado_em, criado_em, pdf_assinado_path, workspace_id, natureza_documento, conta_no_dashboard, contrato_pai_id, data_distrato, valor_distrato, excluido_em, modelo_id, contraparte:contrapartes(nome, cpf_cnpj), workspace:workspaces(id, nome, nome_fantasia), modelo:modelos(id, nome, natureza_financeira)";
 
 const CONTRATO_SELECT_COMPACT =
-  "id, tipo, valor, status_assinatura, criado_em, assinado_em, workspace_id, contraparte:contrapartes(nome), workspace:workspaces(id, nome, nome_fantasia)";
+  "id, tipo, valor, status_assinatura, criado_em, assinado_em, workspace_id, natureza_documento, conta_no_dashboard, excluido_em, modelo_id, contraparte:contrapartes(nome), workspace:workspaces(id, nome, nome_fantasia), modelo:modelos(id, nome, natureza_financeira)";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyWorkspaceScope(query: any, sessao: Sessao) {
@@ -72,6 +72,9 @@ export async function fetchContratos(
 
   query = applyWorkspaceScope(query, sessao);
 
+  // Exclude soft-deleted
+  query = query.is("excluido_em", null);
+
   if (workspaceId) {
     query = query.eq("workspace_id", workspaceId);
   }
@@ -126,12 +129,14 @@ export async function fetchContratosPorAssinatura(sessao: Sessao) {
     .from("contratos")
     .select(CONTRATO_SELECT_FULL)
     .eq("status_assinatura", "aguardando_assinatura")
+    .is("excluido_em", null)
     .order("criado_em", { ascending: true });
 
   let qFinalizados = supabase
     .from("contratos")
     .select(CONTRATO_SELECT_FULL)
     .in("status_assinatura", ["assinado", "recusado", "expirado"])
+    .is("excluido_em", null)
     .gte("criado_em", thirtyDaysAgo.toISOString())
     .order("criado_em", { ascending: false })
     .limit(50);
@@ -151,7 +156,7 @@ export async function fetchContratosPorAssinatura(sessao: Sessao) {
   return { pendentes, finalizados };
 }
 
-/** KPIs agregados para o dashboard */
+/** KPIs operacionais + dados para o dashboard */
 export async function fetchDashboardData(sessao: Sessao) {
   const supabase = createAdminClient();
   const isEtax = sessao.isEtax;
@@ -162,7 +167,10 @@ export async function fetchDashboardData(sessao: Sessao) {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   function scopedCount() {
-    let q = supabase.from("contratos").select("id", { count: "exact", head: true });
+    let q = supabase
+      .from("contratos")
+      .select("id", { count: "exact", head: true })
+      .is("excluido_em", null);
     if (!isEtax) q = applyWorkspaceScope(q, sessao);
     return q;
   }
@@ -193,6 +201,7 @@ export async function fetchDashboardData(sessao: Sessao) {
       let q = supabase
         .from("contratos")
         .select(CONTRATO_SELECT_COMPACT)
+        .is("excluido_em", null)
         .order("criado_em", { ascending: false })
         .limit(10);
       if (!isEtax) q = applyWorkspaceScope(q, sessao);
@@ -202,6 +211,7 @@ export async function fetchDashboardData(sessao: Sessao) {
       let q = supabase
         .from("contratos")
         .select("id, tipo, vigencia_fim, contraparte:contrapartes(nome), workspace:workspaces(id, nome, nome_fantasia)")
+        .is("excluido_em", null)
         .not("vigencia_fim", "is", null)
         .lte("vigencia_fim", thirtyDaysFromNow.toISOString())
         .gte("vigencia_fim", now.toISOString())
@@ -231,5 +241,176 @@ export async function fetchDashboardData(sessao: Sessao) {
     aguardandoAprovacao: aguardandoAprovacao.count ?? 0,
     recentes: recentes.data ?? [],
     vencimentos: vencimentos.data ?? [],
+  };
+}
+
+/**
+ * Dados financeiros para o dashboard.
+ * Regra de inclusão: status_assinatura='assinado', natureza_documento='principal',
+ * conta_no_dashboard=true, excluido_em IS NULL.
+ * Churn: status_assinatura='distratado', mesma regra de principal + dashboard.
+ *
+ * Retorna dados brutos — a agregação (group by workspace, mês) é feita em JS.
+ */
+export interface DashboardFinanceiroFilters {
+  mes?: string; // "YYYY-MM" — se omitido, pega o mês atual
+  workspaceId?: string;
+}
+
+export interface ContratoFinanceiro {
+  id: string;
+  valor: number | null;
+  workspace_id: string | null;
+  assinado_em: string | null;
+  data_distrato: string | null;
+  valor_distrato: number | null;
+  status_assinatura: string;
+  natureza_financeira: string; // from modelo
+  workspace_nome: string;
+  workspace_nome_fantasia: string | null;
+}
+
+export async function fetchDashboardFinanceiro(
+  sessao: Sessao,
+  filters?: DashboardFinanceiroFilters
+) {
+  const supabase = createAdminClient();
+
+  const now = new Date();
+  const mesStr = filters?.mes || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [year, month] = mesStr.split("-").map(Number);
+  const mesStart = new Date(year, month - 1, 1).toISOString();
+  const mesEnd = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
+
+  const selectFields =
+    "id, valor, workspace_id, assinado_em, data_distrato, valor_distrato, status_assinatura, modelo:modelos(natureza_financeira), workspace:workspaces(nome, nome_fantasia)";
+
+  // Query 1: Contratos assinados no mês (receita + despesa)
+  let qAssinados = supabase
+    .from("contratos")
+    .select(selectFields)
+    .eq("status_assinatura", "assinado")
+    .eq("natureza_documento", "principal")
+    .eq("conta_no_dashboard", true)
+    .is("excluido_em", null)
+    .gte("assinado_em", mesStart)
+    .lte("assinado_em", mesEnd);
+
+  // Query 2: Distratados no mês (churn)
+  let qDistratados = supabase
+    .from("contratos")
+    .select(selectFields)
+    .eq("status_assinatura", "distratado")
+    .eq("natureza_documento", "principal")
+    .eq("conta_no_dashboard", true)
+    .is("excluido_em", null)
+    .gte("data_distrato", mesStr + "-01")
+    .lte("data_distrato", mesStr + "-31");
+
+  if (!sessao.isEtax) {
+    qAssinados = applyWorkspaceScope(qAssinados, sessao);
+    qDistratados = applyWorkspaceScope(qDistratados, sessao);
+  }
+
+  if (filters?.workspaceId) {
+    qAssinados = qAssinados.eq("workspace_id", filters.workspaceId);
+    qDistratados = qDistratados.eq("workspace_id", filters.workspaceId);
+  }
+
+  const [resAssinados, resDistratados] = await Promise.all([
+    qAssinados,
+    qDistratados,
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function mapRow(row: any): ContratoFinanceiro {
+    const modelo = row.modelo as { natureza_financeira: string } | null;
+    const ws = row.workspace as { nome: string; nome_fantasia: string | null } | null;
+    return {
+      id: row.id,
+      valor: row.valor,
+      workspace_id: row.workspace_id,
+      assinado_em: row.assinado_em,
+      data_distrato: row.data_distrato,
+      valor_distrato: row.valor_distrato,
+      status_assinatura: row.status_assinatura,
+      natureza_financeira: modelo?.natureza_financeira ?? "neutro",
+      workspace_nome: ws?.nome ?? "Sem empresa",
+      workspace_nome_fantasia: ws?.nome_fantasia ?? null,
+    };
+  }
+
+  const assinados = (resAssinados.data ?? []).map(mapRow);
+  const distratados = (resDistratados.data ?? []).map(mapRow);
+
+  // Aggregate
+  const receitas = assinados.filter((c) => c.natureza_financeira === "receita");
+  const despesas = assinados.filter((c) => c.natureza_financeira === "despesa");
+
+  const receitaBruta = receitas.reduce((sum, c) => sum + (c.valor ?? 0), 0);
+  const churn = distratados.reduce((sum, c) => sum + (c.valor_distrato ?? 0), 0);
+  const receitaLiquida = receitaBruta - churn;
+  const despesaTotal = despesas.reduce((sum, c) => sum + (c.valor ?? 0), 0);
+
+  // Per-workspace breakdown
+  const wsMap = new Map<
+    string,
+    {
+      workspaceId: string;
+      displayName: string;
+      receita: number;
+      despesa: number;
+      churn: number;
+    }
+  >();
+
+  function ensureWs(c: ContratoFinanceiro) {
+    const wsId = c.workspace_id ?? "sem-empresa";
+    if (!wsMap.has(wsId)) {
+      wsMap.set(wsId, {
+        workspaceId: wsId,
+        displayName: c.workspace_nome_fantasia || c.workspace_nome,
+        receita: 0,
+        despesa: 0,
+        churn: 0,
+      });
+    }
+    return wsMap.get(wsId)!;
+  }
+
+  for (const c of receitas) {
+    ensureWs(c).receita += c.valor ?? 0;
+  }
+  for (const c of despesas) {
+    ensureWs(c).despesa += c.valor ?? 0;
+  }
+  for (const c of distratados) {
+    ensureWs(c).churn += c.valor_distrato ?? 0;
+  }
+
+  const porEmpresa = Array.from(wsMap.values()).sort((a, b) =>
+    a.displayName.localeCompare(b.displayName)
+  );
+
+  console.log("[fetchDashboardFinanceiro]", {
+    mes: mesStr,
+    assinados: assinados.length,
+    distratados: distratados.length,
+    receitaBruta,
+    churn,
+    receitaLiquida,
+    despesaTotal,
+    empresas: porEmpresa.length,
+  });
+
+  return {
+    mes: mesStr,
+    receitaBruta,
+    churn,
+    receitaLiquida,
+    despesaTotal,
+    porEmpresa,
+    assinados,
+    distratados,
   };
 }

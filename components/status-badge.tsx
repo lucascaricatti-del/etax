@@ -82,6 +82,12 @@ const STATUS_CONFIG: Record<
     text: "text-[var(--color-status-danger)]",
     bg: "bg-[var(--color-status-danger-bg)]",
   },
+  distratado: {
+    label: "Distratado",
+    dot: "bg-[var(--color-status-danger)]",
+    text: "text-[var(--color-status-danger)]",
+    bg: "bg-[var(--color-status-danger-bg)]",
+  },
   // Vigência
   vigente: {
     label: "Vigente",

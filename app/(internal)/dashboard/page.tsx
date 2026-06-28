@@ -3,11 +3,44 @@ import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { redirect } from "next/navigation";
 import { formatBRL } from "@/lib/format";
-import { fetchDashboardData } from "@/lib/queries/contratos";
+import { fetchDashboardData, fetchDashboardFinanceiro } from "@/lib/queries/contratos";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { DashboardFilters } from "./dashboard-filters";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    mes?: string;
+    empresa?: string;
+  }>;
+}) {
+  const params = await searchParams;
   const sessao = await getSessao();
   if (!sessao) redirect("/login");
+
+  const isEtax = sessao.isEtax;
+
+  // Fetch workspaces for filter dropdown
+  let workspaces: Array<{ id: string; nome: string; nome_fantasia: string | null }> = [];
+  if (isEtax) {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from("workspaces")
+      .select("id, nome, nome_fantasia")
+      .eq("ativo", true)
+      .order("nome");
+    workspaces = data ?? [];
+  }
+
+  // Fetch operational + financial data in parallel
+  const [operacional, financeiro] = await Promise.all([
+    fetchDashboardData(sessao),
+    fetchDashboardFinanceiro(sessao, {
+      mes: params.mes,
+      workspaceId: params.empresa,
+    }),
+  ]);
 
   const {
     totalAtivos,
@@ -17,17 +50,54 @@ export default async function DashboardPage() {
     aguardandoAprovacao,
     recentes,
     vencimentos,
-  } = await fetchDashboardData(sessao);
+  } = operacional;
 
   const now = new Date();
-  const isEtax = sessao.isEtax;
 
-  const kpis = [
+  // Financial KPIs
+  const financialKpis = [
+    {
+      label: "Receita líquida",
+      value: formatBRL(financeiro.receitaLiquida),
+      color: financeiro.receitaLiquida > 0
+        ? "text-[var(--color-status-ok)]"
+        : "text-[var(--color-text)]",
+    },
+    {
+      label: "Receita bruta",
+      value: formatBRL(financeiro.receitaBruta),
+      color: "text-[var(--color-text)]",
+    },
+    {
+      label: "Churn",
+      value: financeiro.churn > 0 ? `- ${formatBRL(financeiro.churn)}` : formatBRL(0),
+      color: financeiro.churn > 0
+        ? "text-[var(--color-status-danger)]"
+        : "text-[var(--color-text-mute)]",
+    },
+    {
+      label: "Despesas",
+      value: formatBRL(financeiro.despesaTotal),
+      color: financeiro.despesaTotal > 0
+        ? "text-[var(--color-status-warn)]"
+        : "text-[var(--color-text-mute)]",
+    },
+  ];
+
+  // Operational KPIs
+  const operationalKpis = [
     { label: "Contratos ativos", value: totalAtivos, color: "text-[var(--color-text)]" },
     { label: "Aguardando assinatura", value: aguardandoAssinatura, color: "text-[var(--color-status-warn)]" },
     { label: "Assinados no mês", value: assinadosMes, color: "text-[var(--color-status-ok)]" },
     { label: "A vencer (30 dias)", value: aVencer30, color: aVencer30 > 0 ? "text-[var(--color-status-danger)]" : "text-[var(--color-text-mute)]" },
   ];
+
+  // Format month label
+  const [fYear, fMonth] = financeiro.mes.split("-").map(Number);
+  const mesLabel = new Date(fYear, fMonth - 1).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <div>
@@ -35,19 +105,92 @@ export default async function DashboardPage() {
         Dashboard
       </h1>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        {kpis.map((kpi) => (
-          <div key={kpi.label} className="etax-card">
-            <p className="text-xs text-[var(--color-text-mute)] uppercase tracking-wide mb-1">
-              {kpi.label}
-            </p>
-            <p className={`text-2xl font-semibold ${kpi.color}`}>
-              {kpi.value}
-            </p>
+      {/* Filters */}
+      {isEtax && (
+        <DashboardFilters workspaces={workspaces} isEtax={isEtax} />
+      )}
+
+      {/* Financial KPIs */}
+      {isEtax && (
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-3">
+            Financeiro — {mesLabel}
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {financialKpis.map((kpi) => (
+              <div key={kpi.label} className="etax-card">
+                <p className="text-xs text-[var(--color-text-mute)] uppercase tracking-wide mb-1">
+                  {kpi.label}
+                </p>
+                <p className={`text-xl font-semibold ${kpi.color}`}>
+                  {kpi.value}
+                </p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </section>
+      )}
+
+      {/* Per-empresa breakdown */}
+      {isEtax && financeiro.porEmpresa.length > 0 && !params.empresa && (
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-3">
+            Por empresa — {mesLabel}
+          </h2>
+          <div className="grid gap-2">
+            {financeiro.porEmpresa.map((ws) => (
+              <div key={ws.workspaceId} className="etax-card py-3">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-sm font-medium text-[var(--color-text)] truncate">
+                    {ws.displayName}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-xs flex-wrap">
+                  {ws.receita > 0 && (
+                    <span className="text-[var(--color-status-ok)]">
+                      Receita {formatBRL(ws.receita)}
+                    </span>
+                  )}
+                  {ws.despesa > 0 && (
+                    <span className="text-[var(--color-status-warn)]">
+                      Despesa {formatBRL(ws.despesa)}
+                    </span>
+                  )}
+                  {ws.churn > 0 && (
+                    <span className="text-[var(--color-status-danger)]">
+                      Churn {formatBRL(ws.churn)}
+                    </span>
+                  )}
+                  {ws.receita === 0 && ws.despesa === 0 && ws.churn === 0 && (
+                    <span className="text-[var(--color-text-mute)]">
+                      Sem movimentação
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Operational KPIs */}
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-3">
+          Operacional
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {operationalKpis.map((kpi) => (
+            <div key={kpi.label} className="etax-card">
+              <p className="text-xs text-[var(--color-text-mute)] uppercase tracking-wide mb-1">
+                {kpi.label}
+              </p>
+              <p className={`text-2xl font-semibold ${kpi.color}`}>
+                {kpi.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Aguardando aprovação — só Etax */}
       {isEtax && aguardandoAprovacao > 0 && (
@@ -91,7 +234,11 @@ export default async function DashboardPage() {
                 const workspace = c.workspace as unknown as { id: string; nome: string; nome_fantasia: string | null } | null;
 
                 return (
-                  <div key={c.id} className="etax-card py-3">
+                  <Link
+                    key={c.id}
+                    href={`/contratos/${c.id}`}
+                    className="etax-card py-3 hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
+                  >
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-[var(--color-text)] truncate">
@@ -121,7 +268,7 @@ export default async function DashboardPage() {
                         })}
                       </span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

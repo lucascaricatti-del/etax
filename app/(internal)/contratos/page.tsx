@@ -189,9 +189,13 @@ function ContratoCard({
     nome: string;
     nome_fantasia: string | null;
   } | null;
+  const isAditivo = c.natureza_documento === "aditivo";
 
   return (
-    <div className="etax-card">
+    <Link
+      href={`/contratos/${c.id}`}
+      className="etax-card block hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
+    >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0">
           <p className="font-semibold text-sm text-[var(--color-text)] truncate">
@@ -203,10 +207,15 @@ function ContratoCard({
             </p>
           )}
         </div>
-        <div className="flex gap-1.5 flex-shrink-0">
+        <div className="flex gap-1.5 flex-shrink-0 flex-wrap">
           <StatusBadge status={c.status_assinatura} />
           {c.status_vigencia && c.status_assinatura === "assinado" && (
             <StatusBadge status={c.status_vigencia} />
+          )}
+          {isAditivo && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-[var(--color-status-info)] bg-[var(--color-status-info-bg)]">
+              Aditivo
+            </span>
           )}
         </div>
       </div>
@@ -258,18 +267,11 @@ function ContratoCard({
           </p>
         )}
 
-        {c.pdf_assinado_path && (
-          <a
-            href={`/api/contratos/${c.id}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[var(--color-primary)] hover:underline font-medium"
-          >
-            Baixar PDF assinado
-          </a>
+        {!c.conta_no_dashboard && (
+          <p className="text-[var(--color-status-warn)]">Fora do dashboard</p>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 

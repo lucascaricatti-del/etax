@@ -7,6 +7,7 @@ const STATUS_OPTIONS = [
   { value: "", label: "Todos os status" },
   { value: "aguardando_assinatura", label: "Aguardando assinatura" },
   { value: "assinado", label: "Assinado" },
+  { value: "distratado", label: "Distratado" },
   { value: "recusado", label: "Recusado" },
   { value: "expirado", label: "Expirado" },
 ];

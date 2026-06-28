@@ -173,6 +173,7 @@ export async function POST(
       clicksign_envelope_id: envelopeId,
       clicksign_document_key: documentId,
       workspace_id: solicitacao.workspace_id,
+      modelo_id: solicitacao.modelo_id,
     };
 
     console.log("[GerarContrato] Insert payload contratos:", JSON.stringify(insertPayload, null, 2));

@@ -96,3 +96,29 @@ export interface ModeloComDetalhes extends Modelo {
   tipo_contrato?: TipoContrato | null;
   modelo_empresas?: { workspace_id: string }[];
 }
+
+export interface Contrato {
+  id: string;
+  solicitacao_id: string | null;
+  contraparte_id: string;
+  workspace_id: string | null;
+  tipo: string;
+  valor: number | null;
+  status_assinatura: string;
+  status_vigencia: string | null;
+  vigencia_inicio: string | null;
+  vigencia_fim: string | null;
+  assinado_em: string | null;
+  criado_em: string;
+  pdf_assinado_path: string | null;
+  clicksign_envelope_id: string | null;
+  clicksign_document_key: string | null;
+  natureza_documento: "principal" | "aditivo";
+  contrato_pai_id: string | null;
+  conta_no_dashboard: boolean;
+  data_distrato: string | null;
+  valor_distrato: number | null;
+  excluido_em: string | null;
+  excluido_por: string | null;
+  modelo_id: string | null;
+}

@@ -31,8 +31,38 @@ Etax cria a empresa -> cria convite (`workspace_invites`, token) -> envia link p
 
 ## Ciclo de vida
 Solicitacao: `nova -> em_confeccao -> aguardando_aprovacao -> aprovada -> enviada_assinatura` (ou `cancelada`).
-Assinatura: `aguardando_assinatura -> assinado | recusado | expirado`.
+Assinatura: `aguardando_assinatura -> assinado | recusado | expirado | distratado`.
 Regra: so vai a ClickSign se `aprovada` + modelo + signatario. Cada documento >= 2 requisitos (autenticacao + assinatura).
+
+## Contratos — campos avancados
+- **natureza_documento** (`principal` | `aditivo`): default `principal`. Aditivos nao somam no dashboard, ficam vinculados ao contrato pai via `contrato_pai_id`.
+- **contrato_pai_id** (uuid nullable): FK para `contratos.id`. Usado quando `natureza_documento = 'aditivo'`.
+- **conta_no_dashboard** (boolean, default true): flag manual. Se false, contrato e excluido dos KPIs financeiros.
+- **data_distrato** (date) + **valor_distrato** (numeric): preenchidos quando admin registra distrato. `status_assinatura` muda para `distratado`.
+- **excluido_em** (timestamptz) + **excluido_por** (uuid FK profiles): soft delete. Contrato some das listagens e calculos, mas permanece no banco.
+- **modelo_id** (uuid FK modelos): salvo no contrato no momento da geracao. Usado para obter `natureza_financeira` (receita/despesa/neutro) no dashboard.
+
+## Dashboard financeiro — regra de inclusao
+Soma APENAS contratos que atendam TODAS as condicoes:
+1. `status_assinatura = 'assinado'`
+2. `natureza_documento = 'principal'`
+3. `conta_no_dashboard = true`
+4. `excluido_em IS NULL`
+
+Metricas:
+- **Receita bruta** = soma dos contratos cuja `natureza_financeira` do modelo e `receita`, assinados no mes.
+- **Churn** = soma de `valor_distrato` dos contratos `distratado` no mes (por `data_distrato`).
+- **Receita liquida** = receita bruta - churn.
+- **Despesas** = soma dos contratos cuja `natureza_financeira` e `despesa`, assinados no mes.
+- Tudo segmentado por empresa (nome_fantasia, fallback razao social) e total consolidado.
+
+## Acoes administrativas (admin Etax)
+Restrictas a `papel_etax = 'admin'` via `PATCH /api/contratos/[id]`:
+- **toggle_dashboard**: alterna `conta_no_dashboard`.
+- **marcar_aditivo**: seta `natureza_documento='aditivo'`, vincula `contrato_pai_id`, desliga dashboard.
+- **registrar_distrato**: exige `data_distrato` + `valor_distrato`, muda status para `distratado`.
+- **excluir**: soft delete (`excluido_em` + `excluido_por`).
+- **restaurar**: desfaz soft delete.
 
 ## Menu
 **Console Etax:** Dashboard, Empresas (workspaces), Solicitacoes, Confeccao, Assinaturas, Contratos, Modelos, Configuracoes.
