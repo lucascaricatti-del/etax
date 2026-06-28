@@ -5,6 +5,7 @@ import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { InviteForm } from "./invite-form";
 import { EditEmpresaForm } from "./edit-empresa-form";
+import { Eye } from "lucide-react";
 
 export default async function EmpresaDetalhePage({
   params,
@@ -12,28 +13,44 @@ export default async function EmpresaDetalhePage({
   params: Promise<{ id: string }>;
 }) {
   const sessao = await getSessao();
-  if (!sessao?.isEtax) redirect("/solicitacoes");
+  if (!sessao?.isEtax) redirect("/dashboard");
 
   const { id } = await params;
   const supabase = createAdminClient();
 
+  // Fetch workspace first (needed for notFound check)
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("*")
+    .select("id, nome, nome_fantasia, cnpj, slug, ativo, criado_em")
     .eq("id", id)
     .single();
 
   if (!workspace) notFound();
 
-  // Fetch members with profiles
-  const { data: members } = await supabase
-    .from("workspace_members")
-    .select("workspace_id, user_id, papel, criado_em")
-    .eq("workspace_id", id)
-    .order("criado_em");
+  // Fetch related data in parallel
+  const [membersResult, solicitacoesResult, invitesResult] = await Promise.all([
+    supabase
+      .from("workspace_members")
+      .select("workspace_id, user_id, papel, criado_em")
+      .eq("workspace_id", id)
+      .order("criado_em"),
+    supabase
+      .from("solicitacoes")
+      .select("id, status, criado_em, contraparte:contrapartes(nome), tipo_contrato:tipos_contrato(nome)")
+      .eq("workspace_id", id)
+      .order("criado_em", { ascending: false })
+      .limit(20),
+    supabase
+      .from("workspace_invites")
+      .select("id, email, papel, aceito_em, criado_em")
+      .eq("workspace_id", id)
+      .order("criado_em", { ascending: false }),
+  ]);
+
+  const members = membersResult.data ?? [];
 
   // Fetch profiles for members
-  const userIds = (members ?? []).map((m) => m.user_id);
+  const userIds = members.map((m) => m.user_id);
   const { data: profiles } = userIds.length
     ? await supabase
         .from("profiles")
@@ -45,33 +62,20 @@ export default async function EmpresaDetalhePage({
     (profiles ?? []).map((p) => [p.id, p])
   );
 
-  const membersList = (members ?? []).map((m) => ({
+  const membersList = members.map((m) => ({
     ...m,
     profile: profileMap.get(m.user_id),
   }));
 
-  // Fetch solicitacoes for this workspace
-  const { data: solicitacoes } = await supabase
-    .from("solicitacoes")
-    .select("id, status, dados, criado_em, tipo_contrato:tipos_contrato(nome), contraparte:contrapartes(nome)")
-    .eq("workspace_id", id)
-    .order("criado_em", { ascending: false })
-    .limit(20);
-
-  // Fetch pending invites
-  const { data: invites } = await supabase
-    .from("workspace_invites")
-    .select("id, email, papel, token, aceito_em, criado_em")
-    .eq("workspace_id", id)
-    .order("criado_em", { ascending: false });
-
+  const solicitacoes = solicitacoesResult.data ?? [];
+  const invites = invitesResult.data ?? [];
   const displayName = workspace.nome_fantasia || workspace.nome;
 
   return (
     <div>
       <Link
         href="/empresas"
-        className="text-sm text-[var(--color-text-soft)] hover:text-[var(--color-text)] mb-4 inline-block"
+        className="inline-flex items-center gap-1 text-sm text-[var(--color-primary)] hover:underline mb-4"
       >
         &larr; Voltar para empresas
       </Link>
@@ -106,25 +110,25 @@ export default async function EmpresaDetalhePage({
         <div className="etax-card">
           <h2 className="etax-section-label">Dados</h2>
           <dl className="space-y-2 text-sm">
-            <div>
+            <div className="flex justify-between">
               <dt className="text-[var(--color-text-mute)]">Razão Social</dt>
-              <dd className="font-medium">{workspace.nome}</dd>
+              <dd className="font-medium text-right">{workspace.nome}</dd>
             </div>
-            <div>
+            <div className="flex justify-between">
               <dt className="text-[var(--color-text-mute)]">Nome Fantasia</dt>
-              <dd className="font-medium">{workspace.nome_fantasia ?? "—"}</dd>
+              <dd className="font-medium text-right">{workspace.nome_fantasia ?? "—"}</dd>
             </div>
-            <div>
+            <div className="flex justify-between">
               <dt className="text-[var(--color-text-mute)]">CNPJ</dt>
-              <dd className="font-medium">{workspace.cnpj ?? "—"}</dd>
+              <dd className="font-medium font-mono text-xs text-right">{workspace.cnpj ?? "—"}</dd>
             </div>
-            <div>
+            <div className="flex justify-between">
               <dt className="text-[var(--color-text-mute)]">Slug</dt>
-              <dd className="font-medium">{workspace.slug}</dd>
+              <dd className="font-medium text-right">{workspace.slug}</dd>
             </div>
-            <div>
+            <div className="flex justify-between">
               <dt className="text-[var(--color-text-mute)]">Criado em</dt>
-              <dd className="font-medium">
+              <dd className="font-medium text-right">
                 {new Date(workspace.criado_em).toLocaleDateString("pt-BR")}
               </dd>
             </div>
@@ -135,7 +139,9 @@ export default async function EmpresaDetalhePage({
               nome: workspace.nome,
               nome_fantasia: workspace.nome_fantasia,
               cnpj: workspace.cnpj,
+              ativo: workspace.ativo,
             }}
+            isAdmin={sessao.isAdmin}
           />
         </div>
 
@@ -147,11 +153,11 @@ export default async function EmpresaDetalhePage({
           ) : (
             <ul className="space-y-2">
               {membersList.map((m) => (
-                <li key={m.user_id} className="flex items-center justify-between text-sm">
+                <li key={m.user_id} className="flex items-center justify-between text-sm py-1">
                   <span className="font-medium">
                     {m.profile?.nome ?? "Sem nome"}
                   </span>
-                  <span className="text-[var(--color-text-mute)] text-xs">{m.papel}</span>
+                  <span className="text-[var(--color-text-mute)] text-xs capitalize">{m.papel}</span>
                 </li>
               ))}
             </ul>
@@ -163,12 +169,12 @@ export default async function EmpresaDetalhePage({
           <h2 className="etax-section-label">Convidar usuário</h2>
           <InviteForm workspaceId={id} />
 
-          {(invites ?? []).length > 0 && (
+          {invites.length > 0 && (
             <div className="mt-4 space-y-2">
               <h3 className="text-xs font-semibold text-[var(--color-text-mute)] uppercase">
                 Convites enviados
               </h3>
-              {(invites ?? []).map((inv) => (
+              {invites.map((inv) => (
                 <div
                   key={inv.id}
                   className="flex items-center justify-between text-sm border border-[var(--color-line)] rounded-[var(--radius-btn)] p-2"
@@ -196,51 +202,80 @@ export default async function EmpresaDetalhePage({
 
         {/* Solicitações */}
         <div className="etax-card md:col-span-2 p-0">
-          <h2 className="etax-section-label px-5 pt-5">Solicitações</h2>
-          {(solicitacoes ?? []).length === 0 ? (
+          <h2 className="etax-section-label px-5 pt-5">
+            Solicitações ({solicitacoes.length})
+          </h2>
+          {solicitacoes.length === 0 ? (
             <p className="text-sm text-[var(--color-text-mute)] px-5 pb-5">
               Nenhuma solicitação neste workspace.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="etax-table">
-                <thead>
-                  <tr>
-                    <th>Contraparte</th>
-                    <th>Tipo</th>
-                    <th>Status</th>
-                    <th>Data</th>
-                    <th className="text-right">Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(solicitacoes ?? []).map((s: Record<string, unknown>) => (
-                    <tr key={s.id as string}>
-                      <td className="font-medium">
-                        {(s.contraparte as { nome?: string })?.nome ?? "—"}
-                      </td>
-                      <td className="text-[var(--color-text-soft)]">
-                        {(s.tipo_contrato as { nome?: string })?.nome ?? "—"}
-                      </td>
-                      <td>
-                        <StatusBadge status={s.status as string} />
-                      </td>
-                      <td className="text-[var(--color-text-soft)]">
-                        {new Date(s.criado_em as string).toLocaleDateString("pt-BR")}
-                      </td>
-                      <td className="text-right">
-                        <Link
-                          href={`/solicitacoes/${s.id}`}
-                          className="text-sm text-[var(--color-text-soft)] hover:text-[var(--color-text)]"
-                        >
-                          Ver
-                        </Link>
-                      </td>
+            <>
+              {/* Desktop table */}
+              <div className="overflow-x-auto hidden sm:block">
+                <table className="etax-table">
+                  <thead>
+                    <tr>
+                      <th>Contraparte</th>
+                      <th>Tipo</th>
+                      <th>Status</th>
+                      <th>Data</th>
+                      <th className="text-right">Ação</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {solicitacoes.map((s: Record<string, unknown>) => (
+                      <tr key={s.id as string}>
+                        <td className="font-medium">
+                          {(s.contraparte as { nome?: string })?.nome ?? "—"}
+                        </td>
+                        <td className="text-[var(--color-text-soft)]">
+                          {(s.tipo_contrato as { nome?: string })?.nome ?? "—"}
+                        </td>
+                        <td>
+                          <StatusBadge status={s.status as string} />
+                        </td>
+                        <td className="text-[var(--color-text-soft)]">
+                          {new Date(s.criado_em as string).toLocaleDateString("pt-BR")}
+                        </td>
+                        <td className="text-right">
+                          <Link
+                            href={`/solicitacoes/${s.id}`}
+                            className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-primary)] hover:underline"
+                          >
+                            <Eye size={14} />
+                            Ver
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="sm:hidden px-5 pb-5 space-y-2">
+                {solicitacoes.map((s: Record<string, unknown>) => (
+                  <Link
+                    key={s.id as string}
+                    href={`/solicitacoes/${s.id}`}
+                    className="block p-3 rounded-[var(--radius-btn)] border border-[var(--color-line)] hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-sm font-medium text-[var(--color-text)] truncate">
+                        {(s.contraparte as { nome?: string })?.nome ?? "—"}
+                      </p>
+                      <StatusBadge status={s.status as string} />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-[var(--color-text-soft)]">
+                      <span>{(s.tipo_contrato as { nome?: string })?.nome ?? "—"}</span>
+                      <span>·</span>
+                      <span>{new Date(s.criado_em as string).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -57,34 +57,41 @@ export default async function SolicitacaoDetalhePage({
     <div>
       <Link
         href="/solicitacoes"
-        className="text-sm text-[var(--color-text-soft)] hover:text-[var(--color-text)] mb-4 inline-block"
+        className="inline-flex items-center gap-1 text-sm text-[var(--color-primary)] hover:underline mb-4"
       >
         &larr; Voltar para solicitações
       </Link>
 
-      <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
-          Solicitação
-        </h1>
-        <StatusBadge status={s.status} />
-        {showEnviarAprovacao && (
-          <EnviarAprovacaoButton
-            solicitacaoId={s.id}
-            tipoContratoId={s.tipo_contrato_id}
-            workspaceId={s.workspace_id}
-            signerNome={signerNome}
-            signerEmail={signerEmail}
-          />
-        )}
-        {showAprovarReprovar && (
-          <AprovarReprovarButtons solicitacaoId={s.id} />
-        )}
-        {showGerarContrato && (
-          <GerarContratoButton
-            solicitacaoId={s.id}
-            signerNome={signerNome}
-            signerEmail={signerEmail}
-          />
+      <div className="mb-6">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
+            Solicitação
+          </h1>
+          <StatusBadge status={s.status} />
+        </div>
+
+        {(showEnviarAprovacao || showAprovarReprovar || showGerarContrato) && (
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            {showEnviarAprovacao && (
+              <EnviarAprovacaoButton
+                solicitacaoId={s.id}
+                tipoContratoId={s.tipo_contrato_id}
+                workspaceId={s.workspace_id}
+                signerNome={signerNome}
+                signerEmail={signerEmail}
+              />
+            )}
+            {showAprovarReprovar && (
+              <AprovarReprovarButtons solicitacaoId={s.id} />
+            )}
+            {showGerarContrato && (
+              <GerarContratoButton
+                solicitacaoId={s.id}
+                signerNome={signerNome}
+                signerEmail={signerEmail}
+              />
+            )}
+          </div>
         )}
       </div>
 
@@ -105,12 +112,6 @@ export default async function SolicitacaoDetalhePage({
               <dt className="text-[var(--color-text-mute)]">Tipo de contrato</dt>
               <dd className="font-medium">
                 {s.tipo_contrato?.nome ?? "—"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[var(--color-text-mute)]">Status</dt>
-              <dd>
-                <StatusBadge status={s.status} />
               </dd>
             </div>
             <div>

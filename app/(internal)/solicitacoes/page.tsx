@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/status-badge";
 import type { SolicitacaoComDetalhes } from "@/lib/types";
 import { Filters } from "./filters";
 import { NovaSolicitacaoForm } from "./nova-solicitacao-form";
+import { Eye } from "lucide-react";
 
 export default async function SolicitacoesPage({
   searchParams,
@@ -159,8 +160,9 @@ export default async function SolicitacoesPage({
                   <td className="text-right">
                     <Link
                       href={`/solicitacoes/${s.id}`}
-                      className="text-sm font-medium text-[var(--color-text-soft)] hover:text-[var(--color-text)]"
+                      className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-primary)] hover:underline"
                     >
+                      <Eye size={14} />
                       Ver
                     </Link>
                   </td>

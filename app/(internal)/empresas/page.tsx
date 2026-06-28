@@ -6,7 +6,8 @@ import { NovaEmpresaForm } from "./nova-empresa-form";
 
 export default async function EmpresasPage() {
   const sessao = await getSessao();
-  if (!sessao?.isEtax) redirect("/dashboard");
+  if (!sessao) redirect("/login");
+  if (!sessao.isEtax) redirect("/dashboard");
 
   const supabase = createAdminClient();
 

@@ -2,16 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Pencil, Trash2 } from "lucide-react";
+import { Tooltip } from "@/components/tooltip";
 
 export function EditEmpresaForm({
   workspace,
+  isAdmin,
 }: {
   workspace: {
     id: string;
     nome: string;
     nome_fantasia: string | null;
     cnpj: string | null;
+    ativo: boolean;
   };
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -22,6 +27,10 @@ export function EditEmpresaForm({
   const [cnpj, setCnpj] = useState(workspace.cnpj ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Delete state
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function handleSave() {
     if (!nome.trim()) {
@@ -54,14 +63,76 @@ export function EditEmpresaForm({
     router.refresh();
   }
 
+  async function handleDelete() {
+    setDeleting(true);
+    setError("");
+
+    const res = await fetch(`/api/empresas/${workspace.id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      const body = await res.json();
+      setError(body.error || "Erro ao excluir");
+      setDeleting(false);
+      setConfirmDelete(false);
+      return;
+    }
+
+    router.push("/empresas");
+    router.refresh();
+  }
+
   if (!editing) {
     return (
-      <button
-        onClick={() => setEditing(true)}
-        className="text-sm text-[var(--color-primary)] hover:underline mt-2"
-      >
-        Editar dados
-      </button>
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--color-line)]">
+        <button
+          onClick={() => setEditing(true)}
+          className="etax-btn etax-btn-secondary min-h-[40px] text-sm"
+        >
+          <Pencil size={14} />
+          Editar dados
+        </button>
+
+        {isAdmin && (
+          <>
+            {!confirmDelete ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="etax-btn etax-btn-danger min-h-[40px] text-sm"
+                >
+                  <Trash2 size={14} />
+                  Excluir
+                </button>
+                <Tooltip text="Desativa a empresa. Contratos ativos impedem a exclusão." />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="etax-btn etax-btn-danger min-h-[40px] text-sm"
+                >
+                  {deleting ? "Excluindo..." : "Confirmar exclusão"}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="etax-btn etax-btn-ghost min-h-[40px] text-sm"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {error && (
+          <span className="text-xs text-[var(--color-status-danger)]">
+            {error}
+          </span>
+        )}
+      </div>
     );
   }
 
