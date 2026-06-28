@@ -3,7 +3,7 @@
  *
  * JSON:API format — Content-Type: application/vnd.api+json
  * Base URL from env CLICKSIGN_BASE (production: https://app.clicksign.com/api/v3)
- * Auth from env CLICKSIGN_TOKEN
+ * Token: per-workspace (workspace_clicksign_config.clicksign_token) ou fallback env CLICKSIGN_TOKEN
  *
  * Normalização de variáveis:
  * No banco e no formulário, as keys são minúsculas (ex: razao_social, cnpj).
@@ -12,7 +12,7 @@
  */
 
 const BASE = () => process.env.CLICKSIGN_BASE!;
-const TOKEN = () => process.env.CLICKSIGN_TOKEN!;
+const FALLBACK_TOKEN = () => process.env.CLICKSIGN_TOKEN!;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,9 +48,11 @@ export function toTemplateData(
 async function clicksignFetch<T = unknown>(
   path: string,
   method: "GET" | "POST" | "PATCH",
-  body?: unknown
+  body?: unknown,
+  token?: string
 ): Promise<T> {
   const url = `${BASE()}${path}`;
+  const authToken = token || FALLBACK_TOKEN();
 
   console.log(`[ClickSign] ${method} ${url}`);
   if (body) console.log("[ClickSign] request body:", JSON.stringify(body, null, 2));
@@ -58,7 +60,7 @@ async function clicksignFetch<T = unknown>(
   const res = await fetch(url, {
     method,
     headers: {
-      Authorization: TOKEN(),
+      Authorization: authToken,
       "Content-Type": "application/vnd.api+json",
       Accept: "application/vnd.api+json",
     },
@@ -94,17 +96,17 @@ interface SignerResponse {
 }
 
 // ---------------------------------------------------------------------------
-// API calls
+// API calls — todas aceitam token opcional (per-workspace)
 // ---------------------------------------------------------------------------
 
 /** 1. Criar envelope */
-export async function createEnvelope(name: string): Promise<string> {
+export async function createEnvelope(name: string, token?: string): Promise<string> {
   const res = await clicksignFetch<EnvelopeResponse>("/envelopes", "POST", {
     data: {
       type: "envelopes",
       attributes: { name },
     },
-  });
+  }, token);
   return res.data.id;
 }
 
@@ -113,7 +115,8 @@ export async function addTemplateDocument(
   envelopeId: string,
   filename: string,
   templateKey: string,
-  templateData: Record<string, string>
+  templateData: Record<string, string>,
+  token?: string
 ): Promise<string> {
   const res = await clicksignFetch<DocumentResponse>(
     `/envelopes/${envelopeId}/documents`,
@@ -129,7 +132,8 @@ export async function addTemplateDocument(
           },
         },
       },
-    }
+    },
+    token
   );
   return res.data.id;
 }
@@ -138,7 +142,8 @@ export async function addTemplateDocument(
 export async function addSigner(
   envelopeId: string,
   name: string,
-  email: string
+  email: string,
+  token?: string
 ): Promise<string> {
   const res = await clicksignFetch<SignerResponse>(
     `/envelopes/${envelopeId}/signers`,
@@ -148,7 +153,8 @@ export async function addSigner(
         type: "signers",
         attributes: { name, email },
       },
-    }
+    },
+    token
   );
   return res.data.id;
 }
@@ -159,9 +165,10 @@ export async function addRequirement(
   documentId: string,
   signerId: string,
   action: "provide_evidence" | "agree",
-  extra: { auth?: string; role?: string }
+  extra: { auth?: string; role?: string },
+  token?: string
 ): Promise<void> {
-  const attributes: Record<string, string> = { action };
+  const attributes: Record<string, string | boolean> = { action };
   if (extra.auth) attributes.auth = extra.auth;
   if (extra.role) attributes.role = extra.role;
 
@@ -174,16 +181,16 @@ export async function addRequirement(
         signer: { data: { type: "signers", id: signerId } },
       },
     },
-  });
+  }, token);
 }
 
 /** 5. Ativar envelope (status → running) */
-export async function activateEnvelope(envelopeId: string): Promise<void> {
+export async function activateEnvelope(envelopeId: string, token?: string): Promise<void> {
   await clicksignFetch(`/envelopes/${envelopeId}`, "PATCH", {
     data: {
       id: envelopeId,
       type: "envelopes",
       attributes: { status: "running" },
     },
-  });
+  }, token);
 }

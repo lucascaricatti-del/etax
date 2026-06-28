@@ -73,13 +73,30 @@ Restrictas a `papel_etax = 'admin'` via `PATCH /api/contratos/[id]`:
 - **Tracao:** nome, cpf, email, whatsapp, turma, valor_total, parcelas, forma_pagamento, inicio, vendedor.
 - (Fase 2: PJ e Fornecedor.) Nomes das chaves devem bater com as variaveis do Modelo ClickSign.
 
+## Configuracao de assinatura por empresa
+Tabela `workspace_clicksign_config` (1:1 com `workspaces`):
+- **clicksign_token**: token da API ClickSign da empresa (cada empresa pode ter o seu).
+- **contratada_nome/email**: quem assina como CONTRATADA (representante da empresa).
+- **contratada_auto** (boolean): se true, usa `auth: "auto_signature"` na ClickSign (requer Termo de Assinatura Automatica previo).
+- **testemunha1_nome/email, testemunha2_nome/email**: testemunhas fixas da empresa.
+
+A ETAX nao assina — e gestora. Quem assina sao contratante, contratada e testemunhas.
+
+Tela de config: `/configuracoes` (admin Etax). Seleciona empresa, edita token + contratada + testemunhas.
+
 ## ClickSign v3 - fluxo
 Base `https://app.clicksign.com/api/v3` (sandbox: `https://sandbox.clicksign.com/api/v3`).
-Headers: `Authorization: {token}` + `Content-Type: application/vnd.api+json`.
+Headers: `Authorization: {token da empresa}` + `Content-Type: application/vnd.api+json`.
+Token vem de `workspace_clicksign_config.clicksign_token` (fallback: env `CLICKSIGN_TOKEN`).
+
 1. POST `/envelopes` -> guarda `id`
 2. POST `/envelopes/{id}/documents` (por Modelo: `template.key` + `template.data`)
-3. POST `/envelopes/{id}/signers`
-4. POST `/envelopes/{id}/requirements` (autenticacao + assinatura)
+3. POST `/envelopes/{id}/signers` — 4 signatarios:
+   - **Contratante** (dados da solicitacao): auth email, role `contractor`
+   - **Contratada** (config da empresa): auth email OU `auto_signature`, role `contractee`
+   - **Testemunha 1** (config da empresa): auth email, role `witness`
+   - **Testemunha 2** (config da empresa): auth email, role `witness`
+4. POST `/envelopes/{id}/requirements` (autenticacao + qualificacao para cada signatario)
 5. PATCH `/envelopes/{id}` -> `{ status: "running" }`
 Webhook `/api/webhooks/clicksign`: validar HMAC, atualizar `status_assinatura`, gravar em `eventos_assinatura`.
 Payloads exatos: `https://developers.clicksign.com/llms.txt`.

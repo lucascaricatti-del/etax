@@ -85,14 +85,46 @@ export async function POST(
       );
     }
 
+    // 3. Buscar config de assinatura da empresa
+    if (!solicitacao.workspace_id) {
+      return NextResponse.json(
+        { error: "Solicitação sem workspace_id. Não é possível determinar a config de assinatura." },
+        { status: 400 }
+      );
+    }
+
+    const { data: wsConfig, error: errConfig } = await supabase
+      .from("workspace_clicksign_config")
+      .select("*")
+      .eq("workspace_id", solicitacao.workspace_id)
+      .maybeSingle();
+
+    if (errConfig) {
+      console.error("[GerarContrato] Erro ao buscar config:", errConfig);
+    }
+
+    if (!wsConfig) {
+      return NextResponse.json(
+        { error: "Configuração de assinatura não encontrada para esta empresa. Configure em /configuracoes." },
+        { status: 400 }
+      );
+    }
+
+    const csToken = wsConfig.clicksign_token;
+
     console.log("[GerarContrato] Modelo selecionado:", {
       id: modelo.id,
       templateKey: modelo.clicksign_template_key,
-      workspace_id: modelo.workspace_id,
+    });
+    console.log("[GerarContrato] Config da empresa:", {
+      workspace_id: wsConfig.workspace_id,
+      contratada: wsConfig.contratada_nome,
+      contratada_auto: wsConfig.contratada_auto,
+      testemunha1: wsConfig.testemunha1_nome,
+      testemunha2: wsConfig.testemunha2_nome,
     });
 
-    // 3. Preparar dados do template (keys minúsculas → MAIÚSCULAS)
-    // Formatar valores canônicos para display legível (BRL sem R$, CNPJ com máscara, etc.)
+    // 4. Preparar dados do template (keys minúsculas → MAIÚSCULAS)
     const schemaForFormat = (tipoContrato.schema_campos ?? []) as Array<{ key: string; type?: string }>;
     const dadosForClickSign = formatDadosForClickSign(solicitacao.dados, schemaForFormat);
     const templateData = toTemplateData(dadosForClickSign);
@@ -103,10 +135,10 @@ export async function POST(
 
     console.log("[GerarContrato] Iniciando fluxo ClickSign...");
 
-    // --- ClickSign Flow ---
+    // --- ClickSign Flow (usando token da empresa) ---
 
     // Step 1: Criar envelope
-    const envelopeId = await createEnvelope(envelopeName);
+    const envelopeId = await createEnvelope(envelopeName, csToken);
     console.log("[GerarContrato] Envelope criado:", envelopeId);
 
     // Step 2: Adicionar documento via template
@@ -114,38 +146,98 @@ export async function POST(
       envelopeId,
       filename,
       modelo.clicksign_template_key,
-      templateData
+      templateData,
+      csToken
     );
     console.log("[GerarContrato] Documento adicionado:", documentId);
 
-    // Step 3: Adicionar signatário (representante legal)
-    // O e-mail do signatário vem de dados.email (representante), NÃO de contraparte.email (empresa).
-    const signerEmail = solicitacao.dados.email as string | undefined;
-    const signerNome = (solicitacao.dados.rep_nome as string) || (solicitacao.dados.nome as string) || contraparte.nome;
-    if (!signerEmail) {
+    // ---------------------------------------------------------------
+    // Step 3: Adicionar signatários (4 papéis)
+    // ---------------------------------------------------------------
+
+    // 3a. CONTRATANTE (representante legal da contraparte — assina manual)
+    const contratanteEmail = solicitacao.dados.email as string | undefined;
+    const contratanteNome = (solicitacao.dados.rep_nome as string) || (solicitacao.dados.nome as string) || contraparte.nome;
+    if (!contratanteEmail) {
       return NextResponse.json(
         { error: "E-mail do representante/signatário não encontrado nos dados da solicitação." },
         { status: 400 }
       );
     }
 
-    const signerId = await addSigner(envelopeId, signerNome, signerEmail);
-    console.log("[GerarContrato] Signatário adicionado:", signerId);
+    const contratanteId = await addSigner(envelopeId, contratanteNome, contratanteEmail, csToken);
+    console.log("[GerarContrato] Contratante adicionado:", contratanteId);
 
-    // Step 4a: Requirement de autenticação (e-mail)
-    await addRequirement(envelopeId, documentId, signerId, "provide_evidence", {
+    // Auth: e-mail
+    await addRequirement(envelopeId, documentId, contratanteId, "provide_evidence", {
       auth: "email",
-    });
-    console.log("[GerarContrato] Requirement de autenticação adicionado");
+    }, csToken);
+    // Qualificação: contratante + assinar
+    await addRequirement(envelopeId, documentId, contratanteId, "agree", {
+      role: "contractor",
+    }, csToken);
 
-    // Step 4b: Requirement de assinatura
-    await addRequirement(envelopeId, documentId, signerId, "agree", {
-      role: "sign",
-    });
-    console.log("[GerarContrato] Requirement de assinatura adicionado");
+    // 3b. CONTRATADA (representante da empresa — pode ser auto)
+    const contratadaId = await addSigner(
+      envelopeId,
+      wsConfig.contratada_nome,
+      wsConfig.contratada_email,
+      csToken
+    );
+    console.log("[GerarContrato] Contratada adicionada:", contratadaId, "auto:", wsConfig.contratada_auto);
 
-    // Step 5: Ativar envelope
-    await activateEnvelope(envelopeId);
+    if (wsConfig.contratada_auto) {
+      // Assinatura automática — requer Termo de Autorização prévio na ClickSign
+      await addRequirement(envelopeId, documentId, contratadaId, "provide_evidence", {
+        auth: "auto_signature",
+      }, csToken);
+      console.log("[GerarContrato] Contratada configurada com assinatura automática (auto_signature)");
+      console.log("[GerarContrato] NOTA: Requer Termo de Assinatura Automática previamente assinado na ClickSign");
+    } else {
+      // Assinatura manual via e-mail
+      await addRequirement(envelopeId, documentId, contratadaId, "provide_evidence", {
+        auth: "email",
+      }, csToken);
+    }
+    // Qualificação: contratada
+    await addRequirement(envelopeId, documentId, contratadaId, "agree", {
+      role: "contractee",
+    }, csToken);
+
+    // 3c. TESTEMUNHA 1
+    const test1Id = await addSigner(
+      envelopeId,
+      wsConfig.testemunha1_nome,
+      wsConfig.testemunha1_email,
+      csToken
+    );
+    console.log("[GerarContrato] Testemunha 1 adicionada:", test1Id);
+
+    await addRequirement(envelopeId, documentId, test1Id, "provide_evidence", {
+      auth: "email",
+    }, csToken);
+    await addRequirement(envelopeId, documentId, test1Id, "agree", {
+      role: "witness",
+    }, csToken);
+
+    // 3d. TESTEMUNHA 2
+    const test2Id = await addSigner(
+      envelopeId,
+      wsConfig.testemunha2_nome,
+      wsConfig.testemunha2_email,
+      csToken
+    );
+    console.log("[GerarContrato] Testemunha 2 adicionada:", test2Id);
+
+    await addRequirement(envelopeId, documentId, test2Id, "provide_evidence", {
+      auth: "email",
+    }, csToken);
+    await addRequirement(envelopeId, documentId, test2Id, "agree", {
+      role: "witness",
+    }, csToken);
+
+    // Step 4: Ativar envelope
+    await activateEnvelope(envelopeId, csToken);
     console.log("[GerarContrato] Envelope ativado (running)");
 
     // --- Persistir no banco ---
@@ -157,7 +249,6 @@ export async function POST(
       if (typeof rawValor === "number") {
         valorNumeric = rawValor;
       } else {
-        // String legada — extrair dígitos e converter centavos → reais
         const digits = String(rawValor).replace(/\D/g, "");
         if (digits) valorNumeric = parseInt(digits, 10) / 100;
       }
@@ -169,7 +260,6 @@ export async function POST(
       tipo: tipoContrato.slug,
       valor: valorNumeric,
       status_assinatura: "aguardando_assinatura" as const,
-      // status_vigencia omitido — default do banco é "vigente"
       clicksign_envelope_id: envelopeId,
       clicksign_document_key: documentId,
       workspace_id: solicitacao.workspace_id,
