@@ -93,6 +93,7 @@ export async function POST(request: Request) {
       natureza_financeira,
       disponibilidade,
       variaveis,
+      schema_campos,
       ativo,
       workspace_ids,
     } = body;
@@ -126,6 +127,7 @@ export async function POST(request: Request) {
         natureza_financeira: natureza_financeira || "neutro",
         disponibilidade: disponibilidade || "todas",
         variaveis: variaveis || [],
+        schema_campos: schema_campos || null,
         versao: nextVersion,
         ativo: ativo ?? true,
       })

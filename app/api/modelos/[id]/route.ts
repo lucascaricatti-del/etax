@@ -30,6 +30,7 @@ export async function PATCH(
       "natureza_financeira",
       "disponibilidade",
       "variaveis",
+      "schema_campos",
       "ativo",
     ];
 

@@ -184,6 +184,32 @@ export async function addRequirement(
   }, token);
 }
 
+// ---------------------------------------------------------------------------
+// Templates API
+// ---------------------------------------------------------------------------
+
+interface TemplateResponse {
+  data: { id: string; type: "templates"; attributes: { name: string } };
+}
+
+/** Criar template a partir de .docx (base64) */
+export async function createTemplate(
+  name: string,
+  contentBase64: string,
+  token?: string
+): Promise<string> {
+  const res = await clicksignFetch<TemplateResponse>("/templates", "POST", {
+    data: {
+      type: "templates",
+      attributes: {
+        name,
+        content_base64: contentBase64,
+      },
+    },
+  }, token);
+  return res.data.id;
+}
+
 /** 5. Ativar envelope (status → running) */
 export async function activateEnvelope(envelopeId: string, token?: string): Promise<void> {
   await clicksignFetch(`/envelopes/${envelopeId}`, "PATCH", {

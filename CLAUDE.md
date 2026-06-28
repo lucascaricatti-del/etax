@@ -73,6 +73,19 @@ Restrictas a `papel_etax = 'admin'` via `PATCH /api/contratos/[id]`:
 - **Tracao:** nome, cpf, email, whatsapp, turma, valor_total, parcelas, forma_pagamento, inicio, vendedor.
 - (Fase 2: PJ e Fornecedor.) Nomes das chaves devem bater com as variaveis do Modelo ClickSign.
 
+## Cadastro de modelos (upload .docx)
+Fluxo: advogado sobe um `.docx` com placeholders `{{VARIAVEL}}` → sistema faz 3 coisas automaticamente:
+1. **Cria o template na ClickSign** via `POST /templates` (JSON:API, `content_base64` + `name`). Retorna `template.key`.
+2. **Extrai as variaveis** do .docx: descompacta o ZIP, le `word/document.xml` (e headers/footers), concatena `<w:t>` por paragrafo, busca `{{VARIAVEL}}`. Normaliza para MAIUSCULO.
+3. **Gera `schema_campos`** a partir dos nomes das variaveis: infere tipo (email, tel, date, number, text), gera label legivel. O operador pode editar labels e tipos antes de confirmar.
+
+Dados salvos no modelo:
+- `clicksign_template_key`: UUID do template na ClickSign (gerado automaticamente).
+- `variaveis`: `string[]` (ex: `["NOME", "CPF", "EMAIL"]`).
+- `schema_campos`: `CampoSchema[]` (jsonb) — `{key, label, type, required}` para cada variavel.
+
+API: `POST /api/modelos/upload` (FormData: `file` + `nome`) → retorna `{clicksign_template_key, variaveis, schema_campos}`.
+
 ## Configuracao de assinatura por empresa
 Tabela `workspace_clicksign_config` (1:1 com `workspaces`):
 - **clicksign_token**: token da API ClickSign da empresa (cada empresa pode ter o seu).

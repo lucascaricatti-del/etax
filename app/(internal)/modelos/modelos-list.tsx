@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/status-badge";
+import type { CampoSchema } from "@/lib/types";
 
 interface TipoContrato {
   id: string;
@@ -25,6 +26,7 @@ interface ModeloRow {
   natureza_financeira: string;
   disponibilidade: string;
   variaveis: string[];
+  schema_campos: CampoSchema[] | null;
   versao: number;
   ativo: boolean;
   criado_em: string;
@@ -79,7 +81,7 @@ export function ModelosList({
     const names = ids
       .map((id) => {
         const w = workspaces.find((w) => w.id === id);
-        return w ? (w.nome_fantasia || w.nome) : id.slice(0, 8);
+        return w ? w.nome_fantasia || w.nome : id.slice(0, 8);
       })
       .join(", ");
     return names;
@@ -140,6 +142,12 @@ export function ModelosList({
                   <span>
                     {m.disponibilidade === "todas" ? "Todas as empresas" : wsNamesForModelo(m)}
                   </span>
+                  {m.variaveis.length > 0 && (
+                    <>
+                      <span>·</span>
+                      <span>{m.variaveis.length} variáveis</span>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -163,6 +171,29 @@ export function ModelosList({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Tipo dos campos do schema editável
+// ---------------------------------------------------------------------------
+
+const TIPO_CAMPO_OPTIONS: { value: CampoSchema["type"]; label: string }[] = [
+  { value: "text", label: "Texto" },
+  { value: "number", label: "Número" },
+  { value: "date", label: "Data" },
+  { value: "email", label: "E-mail" },
+  { value: "tel", label: "Telefone" },
+  { value: "select", label: "Seleção" },
+];
+
+// ---------------------------------------------------------------------------
+// ModeloForm — criação via upload .docx OU edição manual
+// ---------------------------------------------------------------------------
+
+type UploadResult = {
+  clicksign_template_key: string;
+  variaveis: string[];
+  schema_campos: CampoSchema[];
+};
+
 function ModeloForm({
   modelo,
   tiposContrato,
@@ -178,6 +209,7 @@ function ModeloForm({
 }) {
   const isEdit = !!modelo;
 
+  // --- State: campos do modelo ---
   const [nome, setNome] = useState(modelo?.nome ?? "");
   const [descricao, setDescricao] = useState(modelo?.descricao ?? "");
   const [tipoContratoId, setTipoContratoId] = useState(modelo?.tipo_contrato_id ?? "");
@@ -187,10 +219,20 @@ function ModeloForm({
   const [selectedWs, setSelectedWs] = useState<string[]>(
     modelo?.modelo_empresas?.map((me) => me.workspace_id) ?? []
   );
-  const [variaveisText, setVariaveisText] = useState(
-    (modelo?.variaveis ?? []).join(", ")
+  const [variaveis, setVariaveis] = useState<string[]>(modelo?.variaveis ?? []);
+  const [schemaCampos, setSchemaCampos] = useState<CampoSchema[]>(
+    modelo?.schema_campos ?? []
   );
   const [ativo, setAtivo] = useState(modelo?.ativo ?? true);
+
+  // --- State: upload ---
+  const [uploading, setUploading] = useState(false);
+  const [uploadDone, setUploadDone] = useState(isEdit); // edição pula upload
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- State: save ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -200,19 +242,72 @@ function ModeloForm({
     );
   }
 
+  // --- Upload .docx ---
+  async function handleUpload(file: File) {
+    if (!nome.trim()) {
+      setUploadError("Preencha o nome do modelo antes de enviar o arquivo");
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("nome", nome.trim());
+
+    try {
+      const res = await fetch("/api/modelos/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setUploadError(data.error || "Erro ao processar arquivo");
+        return;
+      }
+
+      const result = data as UploadResult;
+      setTemplateKey(result.clicksign_template_key);
+      setVariaveis(result.variaveis);
+      setSchemaCampos(result.schema_campos);
+      setUploadDone(true);
+      setFileName(file.name);
+    } catch {
+      setUploadError("Erro de conexão ao enviar arquivo");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file);
+  }
+
+  // --- Editar campo do schema ---
+  function updateSchemaField(
+    index: number,
+    field: keyof CampoSchema,
+    value: string | boolean
+  ) {
+    setSchemaCampos((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  }
+
+  // --- Salvar modelo ---
   async function handleSubmit() {
     if (!nome.trim() || !tipoContratoId || !templateKey.trim()) {
-      setError("Preencha nome, tipo de contrato e template key");
+      setError("Preencha nome, tipo de contrato e envie o arquivo .docx");
       return;
     }
 
     setLoading(true);
     setError(null);
-
-    const variaveis = variaveisText
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
 
     const payload = {
       nome: nome.trim(),
@@ -222,6 +317,7 @@ function ModeloForm({
       natureza_financeira: natureza,
       disponibilidade,
       variaveis,
+      schema_campos: schemaCampos.length > 0 ? schemaCampos : null,
       ativo,
       workspace_ids: disponibilidade === "especificas" ? selectedWs : [],
     };
@@ -306,19 +402,166 @@ function ModeloForm({
             </select>
           </div>
 
-          {/* ClickSign Template Key */}
-          <div>
-            <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
-              ClickSign Template Key
-            </label>
-            <input
-              type="text"
-              value={templateKey}
-              onChange={(e) => setTemplateKey(e.target.value)}
-              className="etax-input min-h-[48px] font-mono text-xs"
-              placeholder="uuid do template na ClickSign"
-            />
-          </div>
+          {/* Upload .docx (criação) ou Template Key (edição) */}
+          {!isEdit ? (
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                Arquivo .docx
+              </label>
+
+              {!uploadDone ? (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".docx"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="etax-btn etax-btn-ghost w-full min-h-[48px] border-2 border-dashed border-[var(--color-line)] hover:border-[var(--color-primary)]"
+                  >
+                    {uploading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent" />
+                        Processando...
+                      </span>
+                    ) : (
+                      "Selecionar arquivo .docx"
+                    )}
+                  </button>
+                  <p className="text-xs text-[var(--color-text-mute)] mt-1">
+                    O arquivo deve conter variáveis no formato {"{{VARIAVEL}}"}. O template será criado automaticamente na ClickSign.
+                  </p>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-[var(--radius-btn)] bg-[var(--color-status-ok-bg)] border border-[var(--color-status-ok)]">
+                  <svg className="h-4 w-4 text-[var(--color-status-ok)] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-sm text-[var(--color-status-ok)]">
+                    {fileName} — template criado na ClickSign
+                  </span>
+                </div>
+              )}
+
+              {uploadError && (
+                <div className="mt-2 rounded-[var(--radius-btn)] border border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)] p-3 text-sm text-[var(--color-status-danger)]">
+                  {uploadError}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                ClickSign Template Key
+              </label>
+              <input
+                type="text"
+                value={templateKey}
+                onChange={(e) => setTemplateKey(e.target.value)}
+                className="etax-input min-h-[48px] font-mono text-xs"
+                placeholder="uuid do template na ClickSign"
+              />
+            </div>
+          )}
+
+          {/* Schema dos campos (aparece após upload ou na edição se existir) */}
+          {schemaCampos.length > 0 && (
+            <fieldset className="border border-[var(--color-line)] rounded-[var(--radius-card)] p-4 space-y-3">
+              <legend className="text-xs font-semibold text-[var(--color-text-mute)] uppercase px-1">
+                Variáveis extraídas ({schemaCampos.length})
+              </legend>
+              <p className="text-xs text-[var(--color-text-mute)]">
+                Edite os nomes de exibição e tipos dos campos antes de salvar.
+              </p>
+
+              <div className="space-y-3">
+                {schemaCampos.map((campo, i) => (
+                  <div
+                    key={campo.key}
+                    className="border border-[var(--color-line)] rounded-[var(--radius-btn)] p-3 space-y-2"
+                  >
+                    {/* Variável */}
+                    <p className="font-mono text-xs text-[var(--color-text-mute)]">
+                      {"{{"}{variaveis[i] || campo.key.toUpperCase()}{"}}"}
+                    </p>
+
+                    {/* Label editável */}
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={campo.label}
+                          onChange={(e) =>
+                            updateSchemaField(i, "label", e.target.value)
+                          }
+                          className="etax-input min-h-[40px] text-sm"
+                          placeholder="Nome de exibição"
+                        />
+                      </div>
+                      <div className="w-28">
+                        <select
+                          value={campo.type}
+                          onChange={(e) =>
+                            updateSchemaField(i, "type", e.target.value)
+                          }
+                          className="etax-input min-h-[40px] text-sm"
+                        >
+                          {TIPO_CAMPO_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Obrigatório */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={campo.required}
+                        onChange={(e) =>
+                          updateSchemaField(i, "required", e.target.checked)
+                        }
+                        className="w-3.5 h-3.5 rounded accent-[var(--color-accent)]"
+                      />
+                      <span className="text-xs text-[var(--color-text-soft)]">
+                        Obrigatório
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
+          {/* Variáveis manual (só na edição sem schema) */}
+          {isEdit && schemaCampos.length === 0 && (
+            <div>
+              <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                Variáveis (separadas por vírgula)
+              </label>
+              <input
+                type="text"
+                value={variaveis.join(", ")}
+                onChange={(e) =>
+                  setVariaveis(
+                    e.target.value
+                      .split(",")
+                      .map((v) => v.trim())
+                      .filter(Boolean)
+                  )
+                }
+                className="etax-input min-h-[48px] font-mono text-xs"
+                placeholder="RAZAO_SOCIAL, CNPJ, EMAIL"
+              />
+            </div>
+          )}
 
           {/* Natureza financeira */}
           <div>
@@ -374,32 +617,23 @@ function ModeloForm({
                         onChange={() => toggleWs(ws.id)}
                         className="w-4 h-4 rounded accent-[var(--color-accent)]"
                       />
-                      <span className="text-sm text-[var(--color-text)]">{ws.nome_fantasia || ws.nome}</span>
+                      <span className="text-sm text-[var(--color-text)]">
+                        {ws.nome_fantasia || ws.nome}
+                      </span>
                     </label>
                   ))
                 )}
               </div>
               {selectedWs.length > 0 && (
                 <p className="text-xs text-[var(--color-text-mute)] mt-1">
-                  {selectedWs.length} {selectedWs.length === 1 ? "empresa selecionada" : "empresas selecionadas"}
+                  {selectedWs.length}{" "}
+                  {selectedWs.length === 1
+                    ? "empresa selecionada"
+                    : "empresas selecionadas"}
                 </p>
               )}
             </div>
           )}
-
-          {/* Variáveis */}
-          <div>
-            <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
-              Variáveis (separadas por vírgula)
-            </label>
-            <input
-              type="text"
-              value={variaveisText}
-              onChange={(e) => setVariaveisText(e.target.value)}
-              className="etax-input min-h-[48px] font-mono text-xs"
-              placeholder="razao_social, cnpj, email, valor_total"
-            />
-          </div>
 
           {/* Ativo */}
           <label className="flex items-center gap-2 cursor-pointer min-h-[48px]">
@@ -422,14 +656,14 @@ function ModeloForm({
         <div className="flex flex-col sm:flex-row gap-2 sm:justify-end mt-6">
           <button
             onClick={onClose}
-            disabled={loading}
+            disabled={loading || uploading}
             className="etax-btn etax-btn-ghost w-full sm:w-auto min-h-[48px]"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || uploading || (!isEdit && !uploadDone)}
             className="etax-btn etax-btn-primary w-full sm:w-auto min-h-[48px]"
           >
             {loading ? (

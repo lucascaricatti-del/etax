@@ -82,6 +82,7 @@ export interface Modelo {
   tipo_contrato_id: string;
   clicksign_template_key: string;
   variaveis: string[];
+  schema_campos: CampoSchema[] | null;
   versao: number;
   ativo: boolean;
   criado_em: string;
