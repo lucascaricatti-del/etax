@@ -22,7 +22,7 @@ export default async function SolicitacaoDetalhePage({
   const { data } = await supabase
     .from("solicitacoes")
     .select(
-      "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), modelo:modelos(id, nome, descricao, versao)"
+      "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), modelo:modelos(id, nome, descricao, versao), contrato:contratos!contratos_solicitacao_id_fkey(status_assinatura)"
     )
     .eq("id", id)
     .single();
@@ -31,11 +31,19 @@ export default async function SolicitacaoDetalhePage({
     notFound();
   }
 
-  const s = data as unknown as SolicitacaoComDetalhes;
+  const s = data as unknown as SolicitacaoComDetalhes & {
+    contrato?: { status_assinatura: string }[] | null;
+  };
   const schema = (s.tipo_contrato?.schema_campos ?? []) as CampoSchema[];
   const canEdit =
     (sessao?.isEtax ?? false) &&
     ["nova", "em_confeccao"].includes(s.status);
+
+  // Show contract's signature status when solicitação was sent to signature
+  const displayStatus =
+    s.status === "enviada_assinatura" && s.contrato && s.contrato.length > 0
+      ? s.contrato[0].status_assinatura
+      : s.status;
 
   // O signatário é o representante legal (dados.email), não o email da contraparte/empresa
   const signerNome =
@@ -67,7 +75,7 @@ export default async function SolicitacaoDetalhePage({
           <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
             Solicitação
           </h1>
-          <StatusBadge status={s.status} />
+          <StatusBadge status={displayStatus} />
         </div>
 
         {(showEnviarAprovacao || showAprovarReprovar || showGerarContrato) && (
