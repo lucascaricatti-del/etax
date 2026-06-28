@@ -18,7 +18,7 @@ export default async function SolicitacoesPage({
   let query = supabase
     .from("solicitacoes")
     .select(
-      "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), workspace:workspaces(id, nome, nome_fantasia)"
+      "*, contraparte:contrapartes(*), tipo_contrato:tipos_contrato(*), workspace:workspaces(id, nome, nome_fantasia), contrato:contratos!contratos_solicitacao_id_fkey(status_assinatura)"
     )
     .order("criado_em", { ascending: false });
 
@@ -68,7 +68,17 @@ export default async function SolicitacoesPage({
 
   const items = (solicitacoes ?? []) as unknown as (SolicitacaoComDetalhes & {
     workspace?: { id: string; nome: string; nome_fantasia: string | null } | null;
+    contrato?: { status_assinatura: string }[] | null;
   })[];
+
+  // Resolve display status: if solicitação was sent to signature,
+  // show the contract's signature status instead (assinado, recusado, etc.)
+  function getDisplayStatus(s: (typeof items)[number]) {
+    if (s.status === "enviada_assinatura" && s.contrato && s.contrato.length > 0) {
+      return s.contrato[0].status_assinatura;
+    }
+    return s.status;
+  }
 
   // Resolve defaultWorkspaceId for cliente
   const defaultWorkspaceId = sessao?.isEtax
@@ -140,7 +150,7 @@ export default async function SolicitacoesPage({
                     {s.tipo_contrato?.nome ?? "—"}
                   </td>
                   <td>
-                    <StatusBadge status={s.status} />
+                    <StatusBadge status={getDisplayStatus(s)} />
                   </td>
                   <td className="text-[var(--color-text-soft)]">
                     {new Date(s.criado_em).toLocaleDateString("pt-BR")}
@@ -179,7 +189,7 @@ export default async function SolicitacoesPage({
                 <p className="text-sm font-medium text-[var(--color-text)] truncate">
                   {s.contraparte?.nome ?? "—"}
                 </p>
-                <StatusBadge status={s.status} />
+                <StatusBadge status={getDisplayStatus(s)} />
               </div>
               <div className="flex items-center gap-2 text-xs text-[var(--color-text-soft)]">
                 <span>{s.tipo_contrato?.nome ?? "—"}</span>

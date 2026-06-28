@@ -120,20 +120,28 @@ export function ContratosFilters({
           ))}
         </select>
 
-        {/* Month input with placeholder fix */}
-        <div className="relative w-full sm:w-auto">
-          <input
-            type="month"
-            value={mesValue}
-            onChange={(e) => handleChange("mes", e.target.value)}
-            className="etax-filter-select w-full sm:w-auto min-w-[140px]"
-          />
-          {!mesValue && (
-            <span className="absolute inset-0 flex items-center px-2 text-[0.8125rem] text-[var(--color-text-mute)] pointer-events-none bg-[var(--color-card)] rounded-[var(--radius-btn)] border border-[var(--color-line)]">
-              Período
-            </span>
-          )}
-        </div>
+        <select
+          value={mesValue}
+          onChange={(e) => handleChange("mes", e.target.value)}
+          className="etax-filter-select w-full sm:w-auto"
+        >
+          <option value="">Período</option>
+          {(() => {
+            const opts: { value: string; label: string }[] = [];
+            const now = new Date();
+            for (let i = 0; i < 12; i++) {
+              const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+              const v = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+              const l = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+              opts.push({ value: v, label: l.charAt(0).toUpperCase() + l.slice(1) });
+            }
+            return opts;
+          })().map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
       </FilterBar>
 
       {isEtax && (
