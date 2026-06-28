@@ -164,8 +164,8 @@ export default async function ContratoDetailPage({
         </div>
       </div>
 
-      {/* Excluido banner */}
-      {isExcluido && (
+      {/* Excluido banner — Etax only */}
+      {sessao.isEtax && isExcluido && (
         <div className="etax-card mb-4 border-l-4 border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)]">
           <p className="text-sm font-medium text-[var(--color-status-danger)]">
             Contrato excluído
@@ -176,8 +176,8 @@ export default async function ContratoDetailPage({
         </div>
       )}
 
-      {/* Dashboard exclusion notice */}
-      {!contrato.conta_no_dashboard && !isExcluido && (
+      {/* Dashboard exclusion notice — Etax only */}
+      {sessao.isEtax && !contrato.conta_no_dashboard && !isExcluido && (
         <div className="etax-card mb-4 border-l-4 border-[var(--color-status-warn)] bg-[var(--color-status-warn-bg)]">
           <p className="text-sm font-medium text-[var(--color-status-warn)]">
             Excluído do dashboard
@@ -236,14 +236,16 @@ export default async function ContratoDetailPage({
                     {modelo.nome ?? `v${modelo.versao}`}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-text-soft)]">Natureza financeira</span>
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${NATUREZA_COLORS[modelo.natureza_financeira] ?? NATUREZA_COLORS.neutro}`}
-                  >
-                    {NATUREZA_LABELS[modelo.natureza_financeira] ?? modelo.natureza_financeira}
-                  </span>
-                </div>
+                {sessao.isEtax && (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--color-text-soft)]">Natureza financeira</span>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${NATUREZA_COLORS[modelo.natureza_financeira] ?? NATUREZA_COLORS.neutro}`}
+                    >
+                      {NATUREZA_LABELS[modelo.natureza_financeira] ?? modelo.natureza_financeira}
+                    </span>
+                  </div>
+                )}
               </>
             )}
           </div>

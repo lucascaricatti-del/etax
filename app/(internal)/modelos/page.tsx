@@ -6,7 +6,7 @@ import { ModelosList } from "./modelos-list";
 export default async function ModelosPage() {
   const sessao = await getSessao();
   if (!sessao) redirect("/login");
-  if (!sessao.isEtax) redirect("/solicitacoes");
+  if (!sessao.isEtax) redirect("/dashboard");
 
   const supabase = createAdminClient();
 

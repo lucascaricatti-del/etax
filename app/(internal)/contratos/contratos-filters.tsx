@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef } from "react";
+import { FilterBar } from "@/components/filter-bar";
+import { SegmentedControl } from "@/components/segmented-control";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Todos os status" },
@@ -44,8 +46,13 @@ export function ContratosFilters({
     handleChange("busca", value);
   }
 
-  const hasFilters = searchParams.get("busca") || searchParams.get("empresa") ||
-    searchParams.get("tipo") || searchParams.get("status") || searchParams.get("mes");
+  const hasFilters = !!(
+    searchParams.get("busca") ||
+    searchParams.get("empresa") ||
+    searchParams.get("tipo") ||
+    searchParams.get("status") ||
+    searchParams.get("mes")
+  );
 
   function clearFilters() {
     const params = new URLSearchParams();
@@ -55,9 +62,12 @@ export function ContratosFilters({
     if (searchRef.current) searchRef.current.value = "";
   }
 
+  const mesValue = searchParams.get("mes") ?? "";
+  const currentView = searchParams.get("view") || "lista";
+
   return (
     <div className="space-y-3 mb-4">
-      <div className="flex gap-2 flex-wrap">
+      <FilterBar hasActiveFilters={hasFilters} onClear={clearFilters}>
         {/* Search */}
         <input
           ref={searchRef}
@@ -67,14 +77,14 @@ export function ContratosFilters({
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSearch();
           }}
-          className="etax-input w-full sm:w-auto sm:min-w-[220px] min-h-[48px]"
+          className="etax-filter-select w-full sm:w-auto sm:min-w-[220px]"
         />
 
         {isEtax && (
           <select
             value={searchParams.get("empresa") ?? ""}
             onChange={(e) => handleChange("empresa", e.target.value)}
-            className="etax-input w-full sm:w-auto min-h-[48px]"
+            className="etax-filter-select w-full sm:w-auto"
           >
             <option value="">Todas as empresas</option>
             {workspaces.map((w) => (
@@ -88,7 +98,7 @@ export function ContratosFilters({
         <select
           value={searchParams.get("tipo") ?? ""}
           onChange={(e) => handleChange("tipo", e.target.value)}
-          className="etax-input w-full sm:w-auto min-h-[48px]"
+          className="etax-filter-select w-full sm:w-auto"
         >
           <option value="">Todos os tipos</option>
           {tipos.map((t) => (
@@ -101,7 +111,7 @@ export function ContratosFilters({
         <select
           value={searchParams.get("status") ?? ""}
           onChange={(e) => handleChange("status", e.target.value)}
-          className="etax-input w-full sm:w-auto min-h-[48px]"
+          className="etax-filter-select w-full sm:w-auto"
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -110,49 +120,34 @@ export function ContratosFilters({
           ))}
         </select>
 
-        <input
-          type="month"
-          value={searchParams.get("mes") ?? ""}
-          onChange={(e) => handleChange("mes", e.target.value)}
-          className="etax-input w-full sm:w-auto min-h-[48px]"
-        />
-      </div>
+        {/* Month input with placeholder fix */}
+        <div className="relative w-full sm:w-auto">
+          <input
+            type="month"
+            value={mesValue}
+            onChange={(e) => handleChange("mes", e.target.value)}
+            className="etax-filter-select w-full sm:w-auto min-w-[140px]"
+          />
+          {!mesValue && (
+            <span className="absolute inset-0 flex items-center px-2 text-[0.8125rem] text-[var(--color-text-mute)] pointer-events-none bg-[var(--color-card)] rounded-[var(--radius-btn)] border border-[var(--color-line)]">
+              Período
+            </span>
+          )}
+        </div>
+      </FilterBar>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        {isEtax && (
-          <div className="flex gap-1 rounded-[var(--radius-btn)] border border-[var(--color-line)] overflow-hidden">
-            <button
-              onClick={() => handleChange("view", "")}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors min-h-[40px] ${
-                !searchParams.get("view") || searchParams.get("view") === "lista"
-                  ? "bg-[var(--color-primary)] text-white"
-                  : "bg-[var(--color-bg)] text-[var(--color-text-soft)] hover:bg-[var(--color-card)]"
-              }`}
-            >
-              Lista
-            </button>
-            <button
-              onClick={() => handleChange("view", "agrupado")}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors min-h-[40px] ${
-                searchParams.get("view") === "agrupado"
-                  ? "bg-[var(--color-primary)] text-white"
-                  : "bg-[var(--color-bg)] text-[var(--color-text-soft)] hover:bg-[var(--color-card)]"
-              }`}
-            >
-              Por cliente
-            </button>
-          </div>
-        )}
-
-        {hasFilters && (
-          <button
-            onClick={clearFilters}
-            className="text-xs text-[var(--color-primary)] hover:underline min-h-[40px] px-2"
-          >
-            Limpar filtros
-          </button>
-        )}
-      </div>
+      {isEtax && (
+        <div className="flex items-center gap-2">
+          <SegmentedControl
+            options={[
+              { value: "lista", label: "Lista" },
+              { value: "agrupado", label: "Por cliente" },
+            ]}
+            value={currentView}
+            onChange={(v) => handleChange("view", v === "lista" ? "" : v)}
+          />
+        </div>
+      )}
     </div>
   );
 }

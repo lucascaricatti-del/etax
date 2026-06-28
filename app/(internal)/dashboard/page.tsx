@@ -21,7 +21,7 @@ export default async function DashboardPage({
 
   const isEtax = sessao.isEtax;
 
-  // Fetch workspaces for filter dropdown
+  // Fetch workspaces for filter dropdown (Etax only)
   let workspaces: Array<{ id: string; nome: string; nome_fantasia: string | null }> = [];
   if (isEtax) {
     const supabase = createAdminClient();
@@ -33,14 +33,8 @@ export default async function DashboardPage({
     workspaces = data ?? [];
   }
 
-  // Fetch operational + financial data in parallel
-  const [operacional, financeiro] = await Promise.all([
-    fetchDashboardData(sessao),
-    fetchDashboardFinanceiro(sessao, {
-      mes: params.mes,
-      workspaceId: params.empresa,
-    }),
-  ]);
+  // Fetch operational data always; financial only for Etax
+  const operacional = await fetchDashboardData(sessao);
 
   const {
     totalAtivos,
@@ -53,6 +47,180 @@ export default async function DashboardPage({
   } = operacional;
 
   const now = new Date();
+
+  // ─── CLIENT DASHBOARD ─────────────────────────────────
+  if (!isEtax) {
+    const clientKpis = [
+      {
+        label: "Contratos ativos",
+        value: totalAtivos,
+        color: "text-[var(--color-text)]",
+        highlight: false,
+      },
+      {
+        label: "Aguardando minha assinatura",
+        value: aguardandoAssinatura,
+        color: "text-[var(--color-status-warn)]",
+        highlight: aguardandoAssinatura > 0,
+      },
+      {
+        label: "Assinados no mês",
+        value: assinadosMes,
+        color: "text-[var(--color-status-ok)]",
+        highlight: false,
+      },
+    ];
+
+    return (
+      <div>
+        <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)] mb-6">
+          Dashboard
+        </h1>
+
+        {/* Client KPIs */}
+        <section className="mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {clientKpis.map((kpi) => (
+              <div
+                key={kpi.label}
+                className={`etax-card ${kpi.highlight ? "border-l-4 border-[var(--color-status-warn)]" : ""}`}
+              >
+                <p className="text-xs text-[var(--color-text-mute)] uppercase tracking-wide mb-1">
+                  {kpi.label}
+                </p>
+                <p className={`text-2xl font-semibold ${kpi.color}`}>
+                  {kpi.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+          {/* Contratos recentes */}
+          <section>
+            <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-4">
+              Contratos recentes
+            </h2>
+
+            {recentes.length === 0 ? (
+              <div className="etax-card text-center py-8">
+                <p className="text-sm text-[var(--color-text-mute)]">
+                  Nenhum contrato ainda
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                {recentes.map((c) => {
+                  const contraparte = c.contraparte as unknown as { nome: string } | null;
+                  return (
+                    <Link
+                      key={c.id}
+                      href={`/contratos/${c.id}`}
+                      className="etax-card py-3 hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-sm font-medium text-[var(--color-text)] truncate">
+                          {contraparte?.nome ?? "—"}
+                        </p>
+                        <StatusBadge status={c.status_assinatura} />
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-[var(--color-text-soft)]">
+                        <span className="capitalize">{c.tipo}</span>
+                        {c.valor != null && (
+                          <>
+                            <span>·</span>
+                            <span>{formatBRL(c.valor)}</span>
+                          </>
+                        )}
+                        <span>·</span>
+                        <span>
+                          {new Date(c.criado_em).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Vencimentos próximos */}
+          <section>
+            <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-4">
+              Vencimentos próximos
+            </h2>
+
+            {vencimentos.length === 0 ? (
+              <div className="etax-card text-center py-8">
+                <p className="text-sm text-[var(--color-text-mute)]">
+                  Nenhum vencimento nos próximos 30 dias
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                {vencimentos.map((c) => {
+                  const contraparte = c.contraparte as unknown as { nome: string } | null;
+                  const diasRestantes = Math.ceil(
+                    (new Date(c.vigencia_fim).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+                  );
+                  const urgente = diasRestantes <= 7;
+
+                  return (
+                    <div
+                      key={c.id}
+                      className={`etax-card py-3 ${urgente ? "border-l-4 border-[var(--color-status-danger)]" : ""}`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-sm font-medium text-[var(--color-text)] truncate">
+                          {contraparte?.nome ?? "—"}
+                        </p>
+                        <span
+                          className={`text-xs font-semibold flex-shrink-0 ${
+                            urgente
+                              ? "text-[var(--color-status-danger)]"
+                              : "text-[var(--color-status-warn)]"
+                          }`}
+                        >
+                          {diasRestantes === 0
+                            ? "Vence hoje"
+                            : diasRestantes === 1
+                              ? "Vence amanhã"
+                              : `${diasRestantes} dias`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-[var(--color-text-soft)]">
+                        <span className="capitalize">{c.tipo}</span>
+                        <span>·</span>
+                        <span>
+                          Vence em{" "}
+                          {new Date(c.vigencia_fim).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── ETAX DASHBOARD ───────────────────────────────────
+
+  const financeiro = await fetchDashboardFinanceiro(sessao, {
+    mes: params.mes,
+    workspaceId: params.empresa,
+  });
 
   // Financial KPIs
   const financialKpis = [
@@ -101,38 +269,34 @@ export default async function DashboardPage({
 
   return (
     <div>
-      <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)] mb-6">
+      <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)] mb-6">
         Dashboard
       </h1>
 
       {/* Filters */}
-      {isEtax && (
-        <DashboardFilters workspaces={workspaces} isEtax={isEtax} />
-      )}
+      <DashboardFilters workspaces={workspaces} isEtax={isEtax} />
 
       {/* Financial KPIs */}
-      {isEtax && (
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-3">
-            Financeiro — {mesLabel}
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {financialKpis.map((kpi) => (
-              <div key={kpi.label} className="etax-card">
-                <p className="text-xs text-[var(--color-text-mute)] uppercase tracking-wide mb-1">
-                  {kpi.label}
-                </p>
-                <p className={`text-xl font-semibold ${kpi.color}`}>
-                  {kpi.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-3">
+          Financeiro — {mesLabel}
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {financialKpis.map((kpi) => (
+            <div key={kpi.label} className="etax-card">
+              <p className="text-xs text-[var(--color-text-mute)] uppercase tracking-wide mb-1">
+                {kpi.label}
+              </p>
+              <p className={`text-xl font-semibold ${kpi.color}`}>
+                {kpi.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Per-empresa breakdown */}
-      {isEtax && financeiro.porEmpresa.length > 0 && !params.empresa && (
+      {financeiro.porEmpresa.length > 0 && !params.empresa && (
         <section className="mb-8">
           <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-3">
             Por empresa — {mesLabel}
@@ -178,7 +342,7 @@ export default async function DashboardPage({
         <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-3">
           Operacional
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {operationalKpis.map((kpi) => (
             <div key={kpi.label} className="etax-card">
               <p className="text-xs text-[var(--color-text-mute)] uppercase tracking-wide mb-1">
@@ -193,7 +357,7 @@ export default async function DashboardPage({
       </section>
 
       {/* Aguardando aprovação — só Etax */}
-      {isEtax && aguardandoAprovacao > 0 && (
+      {aguardandoAprovacao > 0 && (
         <Link
           href="/confeccao"
           className="block etax-card mb-6 border-l-4 border-[var(--color-status-warn)] hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
@@ -214,7 +378,7 @@ export default async function DashboardPage({
         </Link>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
         {/* Contratos recentes */}
         <section>
           <h2 className="text-sm font-semibold text-[var(--color-text-mute)] uppercase tracking-wide mb-4">
@@ -244,7 +408,7 @@ export default async function DashboardPage({
                         <p className="text-sm font-medium text-[var(--color-text)] truncate">
                           {contraparte?.nome ?? "—"}
                         </p>
-                        {isEtax && workspace && (
+                        {workspace && (
                           <p className="text-xs text-[var(--color-text-mute)] truncate">
                             {workspace.nome_fantasia || workspace.nome}
                           </p>
@@ -307,7 +471,7 @@ export default async function DashboardPage({
                         <p className="text-sm font-medium text-[var(--color-text)] truncate">
                           {contraparte?.nome ?? "—"}
                         </p>
-                        {isEtax && workspace && (
+                        {workspace && (
                           <p className="text-xs text-[var(--color-text-mute)] truncate">
                             {workspace.nome_fantasia || workspace.nome}
                           </p>

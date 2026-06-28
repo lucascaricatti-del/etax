@@ -78,7 +78,7 @@ export default async function SolicitacoesPage({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+        <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
           Solicitações
         </h1>
         <p className="mt-1 text-sm text-[var(--color-text-mute)]">
@@ -104,7 +104,8 @@ export default async function SolicitacoesPage({
         empresaAtual={empresa}
       />
 
-      <div className="etax-card mt-4 overflow-x-auto p-0">
+      {/* Desktop table */}
+      <div className="etax-card mt-4 overflow-x-auto p-0 hidden sm:block">
         <table className="etax-table">
           <thead>
             <tr>
@@ -157,6 +158,37 @@ export default async function SolicitacoesPage({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="sm:hidden mt-4 grid gap-2">
+        {items.length === 0 ? (
+          <div className="etax-card text-center py-8">
+            <p className="text-sm text-[var(--color-text-mute)]">
+              Nenhuma solicitação encontrada.
+            </p>
+          </div>
+        ) : (
+          items.map((s) => (
+            <Link
+              key={s.id}
+              href={`/solicitacoes/${s.id}`}
+              className="etax-card py-3 hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="text-sm font-medium text-[var(--color-text)] truncate">
+                  {s.contraparte?.nome ?? "—"}
+                </p>
+                <StatusBadge status={s.status} />
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[var(--color-text-soft)]">
+                <span>{s.tipo_contrato?.nome ?? "—"}</span>
+                <span>·</span>
+                <span>{new Date(s.criado_em).toLocaleDateString("pt-BR")}</span>
+              </div>
+            </Link>
+          ))
+        )}
       </div>
     </div>
   );

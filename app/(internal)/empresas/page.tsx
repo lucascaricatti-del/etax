@@ -6,7 +6,7 @@ import { NovaEmpresaForm } from "./nova-empresa-form";
 
 export default async function EmpresasPage() {
   const sessao = await getSessao();
-  if (!sessao?.isEtax) redirect("/solicitacoes");
+  if (!sessao?.isEtax) redirect("/dashboard");
 
   const supabase = createAdminClient();
 
@@ -42,7 +42,7 @@ export default async function EmpresasPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+        <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
           Empresas
         </h1>
         <p className="mt-1 text-sm text-[var(--color-text-mute)]">

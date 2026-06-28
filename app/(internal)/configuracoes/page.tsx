@@ -28,7 +28,7 @@ export default async function ConfiguracoesPage() {
 
   return (
     <div>
-      <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)] mb-6">
+      <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)] mb-6">
         Configurações
       </h1>
 

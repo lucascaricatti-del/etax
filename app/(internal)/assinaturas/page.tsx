@@ -8,7 +8,7 @@ import { fetchContratosPorAssinatura } from "@/lib/queries/contratos";
 export default async function AssinaturasPage() {
   const sessao = await getSessao();
   if (!sessao) redirect("/login");
-  if (!sessao.isEtax) redirect("/solicitacoes");
+  if (!sessao.isEtax) redirect("/dashboard");
 
   const { pendentes, finalizados } = await fetchContratosPorAssinatura(sessao);
 
@@ -18,7 +18,7 @@ export default async function AssinaturasPage() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+        <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
           Assinaturas
         </h1>
         {pendingCount > 0 && (

@@ -152,3 +152,55 @@ TEMPLATE_TRACAO=
 - Segredos so em env; ClickSign/Sheets sempre server-side.
 - Em rota de API com admin client, **sempre** escopar por `workspace_id`.
 - Falha ao escrever na planilha nao trava o contrato (re-tentativa assincrona).
+
+## UI Patterns e Componentes
+
+### Design system
+- **Cores**: definidas como CSS custom properties em `globals.css` (sidebar escuro `#161616`, content `#FAFAF8`, card `#FFFFFF`).
+- **Tipografia**: Inter (corpo), Cormorant Garamond (headings via `.font-heading`).
+- **Icones**: `lucide-react`. Tamanho padrao 16px em nav e botoes.
+- **Radii**: `--radius-card: 11px`, `--radius-btn: 7px`.
+
+### Hierarquia de botoes
+- `.etax-btn-primary` — acao principal (fundo escuro, texto branco).
+- `.etax-btn-secondary` — acao neutra/admin (outline cinza, hover escurece).
+- `.etax-btn-ghost` — acao discreta (outline sutil, fundo transparente).
+- `.etax-btn-danger` — acao destrutiva (outline vermelho, hover fundo vermelho).
+- Todos usam base `.etax-btn` (flex, gap, radius, padding, font-weight).
+
+### Componentes compartilhados
+- **AppShell** (`components/app-shell.tsx`): wrapper que gerencia sidebar desktop (fixa) + drawer mobile (slide). Controla overlay, body scroll lock, e fecha drawer ao navegar.
+- **MobileHeader** (`components/mobile-header.tsx`): header fixo `lg:hidden` com logo e hamburger.
+- **Sidebar** (`components/sidebar.tsx`): navegacao com icones lucide. Nav items diferem por `isEtax`/cliente. Posicionamento controlado pelo AppShell.
+- **FilterBar** (`components/filter-bar.tsx`): wrapper de filtros. No mobile, botao "Filtros" toggle visibilidade. No desktop, filtros sempre em linha horizontal. Suporta `onClear` e indicador de filtros ativos.
+- **SegmentedControl** (`components/segmented-control.tsx`): toggle visual com `data-active`. Usa classes `.etax-segmented` / `.etax-segmented-item`.
+- **Tooltip** (`components/tooltip.tsx`): icone `HelpCircle` com popover escuro. Abre via hover/focus/click (funciona no tap mobile).
+
+### Responsividade
+- **Breakpoints**: `sm:640px` (tablet), `lg:1024px` (desktop). Mobile-first approach.
+- **Sidebar**: drawer com translate no mobile, fixo no desktop (`lg:translate-x-0`).
+- **Main content**: `pt-14 lg:pt-0` (compensa header mobile), padding `px-4 sm:px-6 lg:px-8`.
+- **Headings**: `text-2xl sm:text-3xl` em todos os `<h1>`.
+- **KPI grids**: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`.
+- **Tabelas**: desktop = `etax-table`, mobile = cards empilhados (`hidden sm:block` / `sm:hidden`).
+- **Filtros**: colapsaveis no mobile (botao toggle), horizontais no desktop.
+- **Selects compactos**: `.etax-filter-select` (font 13px, min-h 40px).
+- **Input month**: placeholder overlay "Periodo" quando vazio (fix para "---------- de ----").
+
+## Permissoes do Cliente (visao)
+
+### O que o cliente VE
+- **Dashboard**: 3 KPIs (contratos ativos, aguardando assinatura, assinados no mes), contratos recentes, vencimentos proximos.
+- **Contratos**: lista dos seus contratos, detalhe com contraparte/tipo/valor/status/datas/PDF.
+- **Solicitacoes**: lista e detalhe das suas solicitacoes, formulario de nova solicitacao.
+
+### O que o cliente NAO VE
+- Dashboard financeiro (receita/churn/despesas), secao "Por empresa", card "Aguardando aprovacao".
+- Filtros de empresa e mes no dashboard.
+- Acoes administrativas no detalhe do contrato (toggle dashboard, marcar aditivo, distrato, excluir).
+- Natureza financeira do modelo no detalhe do contrato.
+- Banners "Excluido do dashboard" e "Contrato excluido".
+- Paginas inteiras: `/confeccao`, `/empresas`, `/modelos`, `/mentorados`, `/assinaturas`, `/configuracoes` (redirect para `/dashboard`).
+
+### Principio
+O cliente e dono dos **dados** (seus contratos, suas solicitacoes), nao das **operacoes** (aprovacao, confeccao, assinatura, financeiro). Guards de rota (`redirect("/dashboard")`) protegem todas as paginas Etax-only. Guards de UI (`sessao.isEtax && (...)`) escondem componentes admin dentro de paginas compartilhadas.

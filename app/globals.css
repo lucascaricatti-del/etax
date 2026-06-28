@@ -179,3 +179,112 @@ body {
 .etax-table tbody tr:hover {
   background: #F7F7F5;
 }
+
+/* ─── Mobile overlay ─────────────────────────────── */
+
+.etax-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 39;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.etax-overlay[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ─── Segmented control ───────────────────────────── */
+
+.etax-segmented {
+  display: inline-flex;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--color-line);
+  overflow: hidden;
+  background: var(--color-bg);
+}
+.etax-segmented-item {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border: none;
+  background: transparent;
+  color: var(--color-text-soft);
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+}
+.etax-segmented-item[data-active="true"] {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+.etax-segmented-item[data-active="false"]:hover {
+  background: var(--color-card);
+}
+
+/* ─── Tooltip trigger ──────────────────────────── */
+
+.etax-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--color-line);
+  cursor: help;
+  flex-shrink: 0;
+}
+
+/* ─── Secondary button (outline neutral) ──────── */
+
+.etax-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--color-line);
+  color: var(--color-text-soft);
+}
+.etax-btn-secondary:hover:not(:disabled) {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-color: var(--color-text-mute);
+}
+
+/* ─── Danger button hover ─────────────────────── */
+
+.etax-btn-danger:hover:not(:disabled) {
+  background: var(--color-status-danger);
+  color: #ffffff;
+}
+
+/* ─── Filter bar ──────────────────────────────── */
+
+.etax-filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ─── Filter select (compact) ─────────────────── */
+
+.etax-filter-select {
+  display: block;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--color-line);
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: var(--color-text);
+  background: var(--color-card);
+  outline: none;
+  transition: border-color 0.15s;
+  min-height: 40px;
+}
+.etax-filter-select:focus {
+  border-color: var(--color-text-mute);
+  box-shadow: 0 0 0 1px var(--color-text-mute);
+}

@@ -8,7 +8,7 @@ import { formatBRL } from "@/lib/format";
 export default async function ConfeccaoPage() {
   const sessao = await getSessao();
   if (!sessao) redirect("/login");
-  if (!sessao.isEtax) redirect("/solicitacoes");
+  if (!sessao.isEtax) redirect("/dashboard");
 
   const supabase = createAdminClient();
 
@@ -40,7 +40,7 @@ export default async function ConfeccaoPage() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+        <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
           Confecção
         </h1>
         {pendingCount > 0 && (

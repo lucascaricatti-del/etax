@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { FilterBar } from "@/components/filter-bar";
 
 export function DashboardFilters({
   workspaces,
@@ -22,20 +23,35 @@ export function DashboardFilters({
     router.push(`/dashboard?${params.toString()}`);
   }
 
+  const mesValue = searchParams.get("mes") ?? "";
+  const hasFilters = !!(mesValue || searchParams.get("empresa"));
+
+  function clearFilters() {
+    router.push("/dashboard");
+  }
+
   return (
-    <div className="flex gap-2 flex-wrap mb-6">
-      <input
-        type="month"
-        value={searchParams.get("mes") ?? ""}
-        onChange={(e) => handleChange("mes", e.target.value)}
-        className="etax-input w-full sm:w-auto min-h-[48px]"
-      />
+    <FilterBar hasActiveFilters={hasFilters} onClear={clearFilters}>
+      {/* Month input with placeholder fix */}
+      <div className="relative w-full sm:w-auto">
+        <input
+          type="month"
+          value={mesValue}
+          onChange={(e) => handleChange("mes", e.target.value)}
+          className="etax-filter-select w-full sm:w-auto min-w-[140px]"
+        />
+        {!mesValue && (
+          <span className="absolute inset-0 flex items-center px-2 text-[0.8125rem] text-[var(--color-text-mute)] pointer-events-none bg-[var(--color-card)] rounded-[var(--radius-btn)] border border-[var(--color-line)]">
+            Período
+          </span>
+        )}
+      </div>
 
       {isEtax && workspaces.length > 0 && (
         <select
           value={searchParams.get("empresa") ?? ""}
           onChange={(e) => handleChange("empresa", e.target.value)}
-          className="etax-input w-full sm:w-auto min-h-[48px]"
+          className="etax-filter-select w-full sm:w-auto"
         >
           <option value="">Todas as empresas</option>
           {workspaces.map((w) => (
@@ -45,6 +61,6 @@ export function DashboardFilters({
           ))}
         </select>
       )}
-    </div>
+    </FilterBar>
   );
 }

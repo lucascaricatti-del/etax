@@ -16,8 +16,12 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "E-TAX Ops",
+  title: "E-TAX",
   description: "Plataforma de contratos — E-TAX Consultoria Tributária",
+  icons: {
+    icon: "/LOGO ETAX PNG-07.png",
+    apple: "/LOGO ETAX PNG-07.png",
+  },
 };
 
 export default function RootLayout({

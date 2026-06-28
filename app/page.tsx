@@ -12,5 +12,5 @@ export default async function RootPage() {
     redirect("/dashboard");
   }
 
-  redirect("/solicitacoes");
+  redirect("/dashboard");
 }

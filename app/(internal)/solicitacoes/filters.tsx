@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { FilterBar } from "@/components/filter-bar";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Todos os status" },
@@ -40,13 +41,19 @@ export function Filters({
     router.push(`/solicitacoes?${params.toString()}`);
   }
 
+  const hasFilters = !!(empresaAtual || tipoAtual || statusAtual);
+
+  function clearFilters() {
+    router.push("/solicitacoes");
+  }
+
   return (
-    <div className="flex gap-3 flex-wrap">
+    <FilterBar hasActiveFilters={hasFilters} onClear={clearFilters}>
       {isEtax && (
         <select
           value={empresaAtual ?? ""}
           onChange={(e) => handleChange("empresa", e.target.value)}
-          className="etax-input w-auto"
+          className="etax-filter-select w-full sm:w-auto"
         >
           <option value="">Todas as empresas</option>
           {workspaces.map((w) => (
@@ -60,7 +67,7 @@ export function Filters({
       <select
         value={tipoAtual ?? ""}
         onChange={(e) => handleChange("tipo", e.target.value)}
-        className="etax-input w-auto"
+        className="etax-filter-select w-full sm:w-auto"
       >
         <option value="">Todos os tipos</option>
         {tipos.map((t) => (
@@ -73,7 +80,7 @@ export function Filters({
       <select
         value={statusAtual ?? ""}
         onChange={(e) => handleChange("status", e.target.value)}
-        className="etax-input w-auto"
+        className="etax-filter-select w-full sm:w-auto"
       >
         {STATUS_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
@@ -81,6 +88,6 @@ export function Filters({
           </option>
         ))}
       </select>
-    </div>
+    </FilterBar>
   );
 }

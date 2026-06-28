@@ -4,22 +4,41 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  LayoutDashboard,
+  Building2,
+  FileText,
+  Hammer,
+  PenTool,
+  Files,
+  Users,
+  FileBox,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
 
-const ETAX_NAV = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Empresas", href: "/empresas" },
-  { label: "Solicitações", href: "/solicitacoes" },
-  { label: "Confecção", href: "/confeccao" },
-  { label: "Assinaturas", href: "/assinaturas" },
-  { label: "Contratos", href: "/contratos" },
-  { label: "Mentorados", href: "/mentorados" },
-  { label: "Modelos", href: "/modelos" },
-  { label: "Configurações", href: "/configuracoes" },
+interface NavItem {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+const ETAX_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Empresas", href: "/empresas", icon: Building2 },
+  { label: "Solicitações", href: "/solicitacoes", icon: FileText },
+  { label: "Confecção", href: "/confeccao", icon: Hammer },
+  { label: "Assinaturas", href: "/assinaturas", icon: PenTool },
+  { label: "Contratos", href: "/contratos", icon: Files },
+  { label: "Mentorados", href: "/mentorados", icon: Users },
+  { label: "Modelos", href: "/modelos", icon: FileBox },
+  { label: "Configurações", href: "/configuracoes", icon: Settings },
 ];
 
-const CLIENTE_NAV = [
-  { label: "Solicitações", href: "/solicitacoes" },
-  { label: "Contratos", href: "/contratos" },
+const CLIENTE_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Meus Contratos", href: "/contratos", icon: Files },
+  { label: "Minhas Solicitações", href: "/solicitacoes", icon: FileText },
 ];
 
 export function Sidebar({
@@ -51,7 +70,7 @@ export function Sidebar({
     .join("");
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[var(--sidebar-width)] bg-[var(--color-sidebar-bg)] flex flex-col z-40">
+    <aside className="h-full w-full bg-[var(--color-sidebar-bg)] flex flex-col">
       {/* Logo + tagline */}
       <div className="px-6 pt-7 pb-6 border-b border-[var(--color-sidebar-line)]">
         <Image
@@ -71,6 +90,7 @@ export function Sidebar({
       <nav className="flex-1 overflow-y-auto py-5 px-3">
         <ul className="space-y-0.5">
           {navItems.map((item) => {
+            const Icon = item.icon;
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
             return (
@@ -83,7 +103,10 @@ export function Sidebar({
                       : "text-[var(--color-sidebar-text)] hover:text-[var(--color-sidebar-text-bright)] hover:bg-[var(--color-sidebar-card)]"
                   }`}
                 >
-                  {item.label}
+                  <span className="flex items-center gap-2.5">
+                    <Icon size={16} />
+                    {item.label}
+                  </span>
                   {item.href === "/confeccao" && pendingApprovals > 0 && (
                     <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--color-status-warning)] text-[10px] font-bold text-white">
                       {pendingApprovals}

@@ -90,7 +90,7 @@ export function ModelosList({
   return (
     <div>
       <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
-        <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+        <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
           Modelos
         </h1>
         <button onClick={openNew} className="etax-btn etax-btn-primary min-h-[48px]">

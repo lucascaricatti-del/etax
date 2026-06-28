@@ -83,7 +83,7 @@ export default async function ContratosPage({
     <div>
       <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
         <div>
-          <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+          <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
             Contratos
           </h1>
           <p className="text-sm text-[var(--color-text-mute)] mt-1">

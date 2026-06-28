@@ -78,7 +78,7 @@ export default async function EmpresaDetalhePage({
 
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <div className="min-w-0">
-          <h1 className="font-heading text-3xl font-semibold text-[var(--color-text)]">
+          <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
             {displayName}
           </h1>
           {workspace.nome_fantasia && (

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BarChart3, GitBranch, FileX2, Trash2, RotateCcw } from "lucide-react";
+import { Tooltip } from "@/components/tooltip";
 
 interface ContratoData {
   id: string;
@@ -81,180 +83,197 @@ export function ContratoAdminActions({
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        {/* Toggle dashboard */}
+      {/* Restored state */}
+      {isExcluido ? (
         <button
-          onClick={() => doAction("toggle_dashboard")}
+          onClick={() => doAction("restaurar")}
           disabled={loading}
-          className="etax-btn etax-btn-ghost w-full min-h-[48px] text-left justify-start"
+          className="etax-btn etax-btn-primary w-full min-h-[48px]"
         >
-          {contrato.conta_no_dashboard
-            ? "Excluir do dashboard"
-            : "Incluir no dashboard"}
+          <RotateCcw size={16} />
+          Restaurar contrato
         </button>
-
-        {/* Marcar como aditivo */}
-        {isPrincipal && !isDistratado && !isExcluido && (
-          <>
-            {!showAditivo ? (
-              <button
-                onClick={() => setShowAditivo(true)}
-                disabled={loading}
-                className="etax-btn etax-btn-ghost w-full min-h-[48px] text-left justify-start"
-              >
-                Marcar como aditivo
-              </button>
-            ) : (
-              <div className="etax-card p-4 space-y-3">
-                <p className="text-sm font-medium text-[var(--color-text)]">
-                  Vincular como aditivo de qual contrato?
-                </p>
-                <select
-                  value={contratoPaiId}
-                  onChange={(e) => setContratoPaiId(e.target.value)}
-                  className="etax-input w-full min-h-[48px]"
-                >
-                  <option value="">Selecione o contrato principal</option>
-                  {possiveisPais.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowAditivo(false)}
-                    className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() =>
-                      doAction("marcar_aditivo", { contrato_pai_id: contratoPaiId })
-                    }
-                    disabled={loading || !contratoPaiId}
-                    className="etax-btn etax-btn-primary flex-1 min-h-[48px]"
-                  >
-                    Confirmar
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Registrar distrato */}
-        {isAssinado && !isExcluido && (
-          <>
-            {!showDistrato ? (
-              <button
-                onClick={() => setShowDistrato(true)}
-                disabled={loading}
-                className="etax-btn etax-btn-ghost w-full min-h-[48px] text-left justify-start text-[var(--color-status-danger)]"
-              >
-                Registrar distrato
-              </button>
-            ) : (
-              <div className="etax-card p-4 space-y-3">
-                <p className="text-sm font-medium text-[var(--color-text)]">
-                  Registrar distrato
-                </p>
-                <div>
-                  <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
-                    Data do distrato
-                  </label>
-                  <input
-                    type="date"
-                    value={dataDistrato}
-                    onChange={(e) => setDataDistrato(e.target.value)}
-                    className="etax-input w-full min-h-[48px]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
-                    Valor real do distrato (R$)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={valorDistrato}
-                    onChange={(e) => setValorDistrato(e.target.value)}
-                    className="etax-input w-full min-h-[48px]"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowDistrato(false)}
-                    className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() =>
-                      doAction("registrar_distrato", {
-                        data_distrato: dataDistrato,
-                        valor_distrato: parseFloat(valorDistrato),
-                      })
-                    }
-                    disabled={loading || !dataDistrato || !valorDistrato}
-                    className="etax-btn flex-1 min-h-[48px] bg-[var(--color-status-danger)] text-white hover:opacity-90"
-                  >
-                    Confirmar distrato
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Excluir / Restaurar */}
-        {!isExcluido ? (
-          <>
-            {!showExcluir ? (
-              <button
-                onClick={() => setShowExcluir(true)}
-                disabled={loading}
-                className="etax-btn etax-btn-ghost w-full min-h-[48px] text-left justify-start text-[var(--color-status-danger)]"
-              >
-                Excluir contrato
-              </button>
-            ) : (
-              <div className="etax-card p-4 space-y-3 border border-[var(--color-status-danger)]">
-                <p className="text-sm font-medium text-[var(--color-status-danger)]">
-                  Confirma exclusão deste contrato?
-                </p>
-                <p className="text-xs text-[var(--color-text-soft)]">
-                  O contrato será removido dos cálculos e listagens. Pode ser restaurado depois.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowExcluir(false)}
-                    className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() => doAction("excluir")}
-                    disabled={loading}
-                    className="etax-btn flex-1 min-h-[48px] bg-[var(--color-status-danger)] text-white hover:opacity-90"
-                  >
-                    Excluir
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
+      ) : (
+        <div className="flex flex-col gap-2">
+          {/* Neutral actions */}
           <button
-            onClick={() => doAction("restaurar")}
+            onClick={() => doAction("toggle_dashboard")}
             disabled={loading}
-            className="etax-btn etax-btn-primary w-full min-h-[48px]"
+            className="etax-btn etax-btn-secondary w-full min-h-[48px] justify-between"
           >
-            Restaurar contrato
+            <span className="flex items-center gap-2">
+              <BarChart3 size={16} />
+              {contrato.conta_no_dashboard
+                ? "Excluir do dashboard"
+                : "Incluir no dashboard"}
+            </span>
+            <Tooltip text="Controla se este contrato aparece nos KPIs financeiros" />
           </button>
-        )}
-      </div>
+
+          {isPrincipal && !isDistratado && (
+            <>
+              {!showAditivo ? (
+                <button
+                  onClick={() => setShowAditivo(true)}
+                  disabled={loading}
+                  className="etax-btn etax-btn-secondary w-full min-h-[48px] justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <GitBranch size={16} />
+                    Marcar como aditivo
+                  </span>
+                  <Tooltip text="Vincula como aditivo de outro contrato principal" />
+                </button>
+              ) : (
+                <div className="etax-card p-4 space-y-3">
+                  <p className="text-sm font-medium text-[var(--color-text)]">
+                    Vincular como aditivo de qual contrato?
+                  </p>
+                  <select
+                    value={contratoPaiId}
+                    onChange={(e) => setContratoPaiId(e.target.value)}
+                    className="etax-input w-full min-h-[48px]"
+                  >
+                    <option value="">Selecione o contrato principal</option>
+                    {possiveisPais.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowAditivo(false)}
+                      className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() =>
+                        doAction("marcar_aditivo", { contrato_pai_id: contratoPaiId })
+                      }
+                      disabled={loading || !contratoPaiId}
+                      className="etax-btn etax-btn-primary flex-1 min-h-[48px]"
+                    >
+                      Confirmar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Divider */}
+          <div className="border-t border-[var(--color-line)] my-2" />
+
+          {/* Destructive actions */}
+          {isAssinado && (
+            <>
+              {!showDistrato ? (
+                <button
+                  onClick={() => setShowDistrato(true)}
+                  disabled={loading}
+                  className="etax-btn etax-btn-danger w-full min-h-[48px] justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <FileX2 size={16} />
+                    Registrar distrato
+                  </span>
+                  <Tooltip text="Registra o distrato formal com data e valor" />
+                </button>
+              ) : (
+                <div className="etax-card p-4 space-y-3">
+                  <p className="text-sm font-medium text-[var(--color-text)]">
+                    Registrar distrato
+                  </p>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                      Data do distrato
+                    </label>
+                    <input
+                      type="date"
+                      value={dataDistrato}
+                      onChange={(e) => setDataDistrato(e.target.value)}
+                      className="etax-input w-full min-h-[48px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                      Valor real do distrato (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={valorDistrato}
+                      onChange={(e) => setValorDistrato(e.target.value)}
+                      className="etax-input w-full min-h-[48px]"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowDistrato(false)}
+                      className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() =>
+                        doAction("registrar_distrato", {
+                          data_distrato: dataDistrato,
+                          valor_distrato: parseFloat(valorDistrato),
+                        })
+                      }
+                      disabled={loading || !dataDistrato || !valorDistrato}
+                      className="etax-btn flex-1 min-h-[48px] bg-[var(--color-status-danger)] text-white hover:opacity-90"
+                    >
+                      Confirmar distrato
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {!showExcluir ? (
+            <button
+              onClick={() => setShowExcluir(true)}
+              disabled={loading}
+              className="etax-btn etax-btn-danger w-full min-h-[48px] justify-between"
+            >
+              <span className="flex items-center gap-2">
+                <Trash2 size={16} />
+                Excluir contrato
+              </span>
+              <Tooltip text="Remove dos cálculos e listagens. Pode ser restaurado." />
+            </button>
+          ) : (
+            <div className="etax-card p-4 space-y-3 border border-[var(--color-status-danger)]">
+              <p className="text-sm font-medium text-[var(--color-status-danger)]">
+                Confirma exclusão deste contrato?
+              </p>
+              <p className="text-xs text-[var(--color-text-soft)]">
+                O contrato será removido dos cálculos e listagens. Pode ser restaurado depois.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowExcluir(false)}
+                  className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => doAction("excluir")}
+                  disabled={loading}
+                  className="etax-btn flex-1 min-h-[48px] bg-[var(--color-status-danger)] text-white hover:opacity-90"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
