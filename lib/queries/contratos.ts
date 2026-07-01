@@ -77,8 +77,8 @@ export async function fetchContratos(
 
   query = applyWorkspaceScope(query, sessao);
 
-  // Exclude soft-deleted
-  query = query.is("excluido_em", null);
+  // Exclude soft-deleted e rascunhos (geração em andamento/falha parcial)
+  query = query.is("excluido_em", null).neq("status_assinatura", "rascunho");
 
   if (workspaceId) {
     query = query.eq("workspace_id", workspaceId);
@@ -175,7 +175,7 @@ export async function fetchDashboardData(sessao: Sessao) {
     recentes,
     vencimentos,
   ] = await Promise.all([
-    scopedCount().not("status_assinatura", "in", "(recusado,expirado)"),
+    scopedCount().not("status_assinatura", "in", "(recusado,expirado,rascunho)"),
     scopedCount().eq("status_assinatura", "aguardando_assinatura"),
     scopedCount().eq("status_assinatura", "assinado").gte("assinado_em", startOfMonth),
     scopedCount()
@@ -193,6 +193,7 @@ export async function fetchDashboardData(sessao: Sessao) {
         .from("contratos")
         .select(CONTRATO_SELECT_COMPACT)
         .is("excluido_em", null)
+        .neq("status_assinatura", "rascunho")
         .order("criado_em", { ascending: false })
         .limit(10);
       if (!isEtax) q = applyWorkspaceScope(q, sessao);

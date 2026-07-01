@@ -29,7 +29,8 @@ export default async function ConfeccaoPage() {
       .select(
         "id, status, dados, aprovado_em, contraparte:contrapartes(nome), tipo_contrato:tipos_contrato(nome), modelo:modelos(nome, versao)"
       )
-      .eq("status", "aprovada")
+      // 'gerando' = geração falhou no meio; continua visível para retomar
+      .in("status", ["aprovada", "gerando"])
       .gte("aprovado_em", sevenDaysAgo.toISOString())
       .order("aprovado_em", { ascending: false })
       .limit(20),

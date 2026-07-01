@@ -66,8 +66,9 @@ export default async function SolicitacaoDetalhePage({
     (sessao?.isEtax ?? false) && ["nova", "em_confeccao"].includes(s.status);
   const showAprovarReprovar =
     (sessao?.isAdmin ?? false) && s.status === "aguardando_aprovacao";
+  // 'gerando' = tentativa anterior falhou no meio; o mesmo botão permite retomar
   const showGerarContrato =
-    (sessao?.isEtax ?? false) && s.status === "aprovada";
+    (sessao?.isEtax ?? false) && ["aprovada", "gerando"].includes(s.status);
 
   return (
     <div>

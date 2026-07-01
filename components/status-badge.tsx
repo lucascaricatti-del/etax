@@ -27,6 +27,12 @@ const STATUS_CONFIG: Record<
     text: "text-[var(--color-status-ok)]",
     bg: "bg-[var(--color-status-ok-bg)]",
   },
+  gerando: {
+    label: "Gerando contrato",
+    dot: "bg-[var(--color-status-warn)]",
+    text: "text-[var(--color-status-warn)]",
+    bg: "bg-[var(--color-status-warn-bg)]",
+  },
   enviada_assinatura: {
     label: "Enviada p/ assinatura",
     dot: "bg-[var(--color-status-info)]",
@@ -40,6 +46,12 @@ const STATUS_CONFIG: Record<
     bg: "bg-[var(--color-status-danger-bg)]",
   },
   // Assinatura statuses
+  rascunho: {
+    label: "Rascunho",
+    dot: "bg-[var(--color-text-mute)]",
+    text: "text-[var(--color-text-mute)]",
+    bg: "bg-[var(--color-status-info-bg)]",
+  },
   aguardando_assinatura: {
     label: "Aguardando assinatura",
     dot: "bg-[var(--color-status-warn)]",
