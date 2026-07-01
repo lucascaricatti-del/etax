@@ -31,6 +31,14 @@ export default async function SolicitacaoDetalhePage({
     notFound();
   }
 
+  // Scope check: cliente só acessa solicitação do próprio workspace.
+  // Admin client ignora RLS, então o escopo é obrigatório aqui.
+  if (!sessao?.isEtax) {
+    if (!data.workspace_id || !sessao?.workspaceIds.includes(data.workspace_id)) {
+      notFound();
+    }
+  }
+
   const s = data as unknown as SolicitacaoComDetalhes & {
     contrato?: { status_assinatura: string }[] | null;
   };

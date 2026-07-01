@@ -47,9 +47,9 @@ export default async function ContratoDetailPage({
     redirect("/contratos");
   }
 
-  // Scope check for clients
-  if (!sessao.isEtax && contrato.workspace_id) {
-    if (!sessao.workspaceIds.includes(contrato.workspace_id)) {
+  // Scope check for clients: só acessa se workspace_id não-nulo E pertencer ao usuário
+  if (!sessao.isEtax) {
+    if (!contrato.workspace_id || !sessao.workspaceIds.includes(contrato.workspace_id)) {
       redirect("/contratos");
     }
   }

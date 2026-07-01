@@ -54,12 +54,17 @@ export async function fetchContratos(
 
   // If there's a text search, find matching contraparte IDs first
   let contraparteIds: string[] | null = null;
-  if (busca && busca.trim()) {
-    const term = busca.trim();
-    const { data: matchingContrapartes } = await supabase
+  // Sanitiza o termo: remove caracteres com significado no filtro PostgREST
+  // (vírgula, parênteses, aspas) para evitar injeção de filtro no .or()
+  const term = busca?.trim().replace(/[,()"']/g, "") ?? "";
+  if (term) {
+    let contrapartesQuery = supabase
       .from("contrapartes")
       .select("id")
       .or(`nome.ilike.%${term}%,cpf_cnpj.ilike.%${term}%`);
+    // Escopo por workspace: cliente só busca contrapartes do próprio workspace
+    contrapartesQuery = applyWorkspaceScope(contrapartesQuery, sessao);
+    const { data: matchingContrapartes } = await contrapartesQuery;
     contraparteIds = matchingContrapartes?.map((c) => c.id) ?? [];
     if (contraparteIds.length === 0) {
       return { data: [], error: null, count: 0 };
@@ -280,7 +285,10 @@ export async function fetchDashboardFinanceiro(
     .eq("conta_no_dashboard", true)
     .is("excluido_em", null)
     .gte("data_distrato", mesStr + "-01")
-    .lte("data_distrato", mesStr + "-31");
+    .lte(
+      "data_distrato",
+      `${mesStr}-${String(new Date(year, month, 0).getDate()).padStart(2, "0")}`
+    );
 
   if (!sessao.isEtax) {
     qAssinados = applyWorkspaceScope(qAssinados, sessao);

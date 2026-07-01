@@ -235,9 +235,9 @@ export async function GET(
       );
     }
 
-    // Scope check
-    if (!sessao.isEtax && data.workspace_id) {
-      if (!sessao.workspaceIds.includes(data.workspace_id)) {
+    // Scope check: cliente só acessa se workspace_id não-nulo E pertencer a ele
+    if (!sessao.isEtax) {
+      if (!data.workspace_id || !sessao.workspaceIds.includes(data.workspace_id)) {
         return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
       }
     }
