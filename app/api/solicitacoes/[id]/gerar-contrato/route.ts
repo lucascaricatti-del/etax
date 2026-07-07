@@ -13,6 +13,11 @@ import {
 import { formatDadosForClickSign } from "@/lib/masks";
 import { parseParcelas, consolidarFormaPgto } from "@/lib/parcelas";
 
+/** CPF válido para envio à ClickSign: 11 dígitos (pontuação é ignorada). */
+function cpfCompleto(value: unknown): boolean {
+  return String(value ?? "").replace(/\D/g, "").length === 11;
+}
+
 /** Validate that workspace config has all required fields including CPFs */
 function validateConfig(wsConfig: Record<string, unknown>): string | null {
   const missing: string[] = [];
@@ -20,12 +25,15 @@ function validateConfig(wsConfig: Record<string, unknown>): string | null {
   if (!wsConfig.contratada_nome) missing.push("Nome da contratada");
   if (!wsConfig.contratada_email) missing.push("E-mail da contratada");
   if (!wsConfig.contratada_cpf) missing.push("CPF da contratada");
+  else if (!cpfCompleto(wsConfig.contratada_cpf)) missing.push("CPF da contratada (incompleto — precisa de 11 dígitos)");
   if (!wsConfig.testemunha1_nome) missing.push("Nome da testemunha 1");
   if (!wsConfig.testemunha1_email) missing.push("E-mail da testemunha 1");
   if (!wsConfig.testemunha1_cpf) missing.push("CPF da testemunha 1");
+  else if (!cpfCompleto(wsConfig.testemunha1_cpf)) missing.push("CPF da testemunha 1 (incompleto — precisa de 11 dígitos)");
   if (!wsConfig.testemunha2_nome) missing.push("Nome da testemunha 2");
   if (!wsConfig.testemunha2_email) missing.push("E-mail da testemunha 2");
   if (!wsConfig.testemunha2_cpf) missing.push("CPF da testemunha 2");
+  else if (!cpfCompleto(wsConfig.testemunha2_cpf)) missing.push("CPF da testemunha 2 (incompleto — precisa de 11 dígitos)");
 
   if (missing.length > 0) {
     return `Configuração de assinatura incompleta. Faltam: ${missing.join(", ")}. Atualize em Configurações.`;
@@ -160,6 +168,19 @@ export async function POST(
     if (!contratanteEmail) {
       return NextResponse.json(
         { error: "E-mail do representante/signatário não encontrado nos dados da solicitação." },
+        { status: 400 }
+      );
+    }
+
+    // CPF do contratante é obrigatório e precisa de 11 dígitos (a ClickSign
+    // rejeita documentation inválida). Bloqueia ANTES de travar status.
+    if (!cpfCompleto(contratanteCpf)) {
+      return NextResponse.json(
+        {
+          error: contratanteCpf
+            ? "CPF do contratante incompleto nos dados da solicitação (precisa de 11 dígitos). Edite os dados antes de gerar o contrato."
+            : "CPF do contratante não encontrado nos dados da solicitação. Edite os dados antes de gerar o contrato.",
+        },
         { status: 400 }
       );
     }

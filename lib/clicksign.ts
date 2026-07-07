@@ -35,6 +35,24 @@ export function slugifyFilename(raw: string): string {
   return `${slug || "documento"}.docx`;
 }
 
+/**
+ * Formata CPF para o padrão aceito pela ClickSign no campo `documentation`:
+ * "000.000.000-00". Aceita entrada só com dígitos (canônico do banco) ou já
+ * pontuada (config legada). Se não tiver 11 dígitos, devolve como veio —
+ * a validação pré-geração deve ter bloqueado antes.
+ */
+export function formatCpfClickSign(raw: string): string {
+  const d = String(raw).replace(/\D/g, "");
+  if (d.length !== 11) return String(raw);
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
+/** Máscara parcial de CPF para log: mostra só os 2 últimos dígitos. */
+function maskCpfForLog(value: string): string {
+  const d = String(value).replace(/\D/g, "");
+  return `***.***.***-${d.slice(-2) || "??"}`;
+}
+
 export function toTemplateData(
   dados: Record<string, unknown>
 ): Record<string, string> {
@@ -55,7 +73,15 @@ async function clicksignFetch<T = unknown>(
   const authToken = token || FALLBACK_TOKEN();
 
   console.log(`[ClickSign] ${method} ${url}`);
-  if (body) console.log("[ClickSign] request body:", JSON.stringify(body, null, 2));
+  if (body) {
+    // Mascara CPFs (documentation) no log por segurança
+    const bodyLog = JSON.stringify(body, null, 2).replace(
+      /("documentation":\s*")([^"]+)(")/g,
+      (_m, p1: string, v: string, p3: string) =>
+        `${p1}***.***.***-${v.replace(/\D/g, "").slice(-2)}${p3}`
+    );
+    console.log("[ClickSign] request body:", bodyLog);
+  }
 
   const res = await fetch(url, {
     method,
@@ -148,8 +174,16 @@ export async function addSigner(
 ): Promise<string> {
   const attributes: Record<string, unknown> = { name, email };
   if (documentation) {
-    attributes.documentation = documentation;
+    const recebidoDigits = String(documentation).replace(/\D/g, "");
+    const recebidoPontuado = /\D/.test(String(documentation).trim());
+    const formatted = formatCpfClickSign(documentation);
+    attributes.documentation = formatted;
     attributes.has_documentation = true;
+    console.log(
+      `[ClickSign] Signer "${name}": documentation recebida com ${recebidoDigits.length} dígitos ` +
+        `(${recebidoPontuado ? "com pontuação" : "só dígitos"}) → enviada como ${maskCpfForLog(formatted)} ` +
+        `(padrão 000.000.000-00)`
+    );
   }
 
   const res = await clicksignFetch<SignerResponse>(
