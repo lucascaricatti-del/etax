@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CampoSchema } from "@/lib/types";
 import { CampoInput, validateForm } from "@/components/campo-input";
+import { ParcelasInput } from "@/components/parcelas-input";
+import type { Parcela } from "@/lib/parcelas";
+
+type FormValue = string | number | Parcela[];
 
 interface TipoOption {
   id: string;
@@ -26,7 +30,7 @@ export function NovaSolicitacaoForm({
   const [open, setOpen] = useState(false);
   const [tipoId, setTipoId] = useState("");
   const [workspaceId, setWorkspaceId] = useState("");
-  const [dados, setDados] = useState<Record<string, string | number>>({});
+  const [dados, setDados] = useState<Record<string, FormValue>>({});
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -39,7 +43,7 @@ export function NovaSolicitacaoForm({
     setFieldErrors({});
   }
 
-  function handleFieldChange(key: string, value: string | number) {
+  function handleFieldChange(key: string, value: FormValue) {
     setDados((prev) => ({ ...prev, [key]: value }));
     if (fieldErrors[key]) {
       setFieldErrors((prev) => {
@@ -163,15 +167,30 @@ export function NovaSolicitacaoForm({
       </div>
 
       {tipoSelecionado &&
-        tipoSelecionado.schema_campos.map((campo) => (
-          <CampoInput
-            key={campo.key}
-            campo={campo}
-            value={dados[campo.key]}
-            onChange={(v) => handleFieldChange(campo.key, v)}
-            error={fieldErrors[campo.key]}
-          />
-        ))}
+        tipoSelecionado.schema_campos.map((campo) =>
+          campo.type === "parcelas" ? (
+            <ParcelasInput
+              key={campo.key}
+              campo={campo}
+              value={dados[campo.key]}
+              onChange={(v) => handleFieldChange(campo.key, v)}
+              valorTotal={
+                typeof dados.valor_total === "number"
+                  ? dados.valor_total
+                  : undefined
+              }
+              error={fieldErrors[campo.key]}
+            />
+          ) : (
+            <CampoInput
+              key={campo.key}
+              campo={campo}
+              value={dados[campo.key] as string | number | undefined}
+              onChange={(v) => handleFieldChange(campo.key, v)}
+              error={fieldErrors[campo.key]}
+            />
+          )
+        )}
 
       {status === "error" && errorMessage && (
         <div className="rounded-[var(--radius-btn)] border border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)] p-3 text-sm text-[var(--color-status-danger)]">

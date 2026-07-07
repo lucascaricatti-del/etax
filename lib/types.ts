@@ -29,7 +29,7 @@ export interface WorkspaceInvite {
 export interface CampoSchema {
   key: string;
   label: string;
-  type: "text" | "number" | "date" | "email" | "tel" | "select";
+  type: "text" | "number" | "date" | "email" | "tel" | "select" | "parcelas";
   required: boolean;
   placeholder?: string;
   options?: string[];

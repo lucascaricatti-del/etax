@@ -69,9 +69,17 @@ Restrictas a `papel_etax = 'admin'` via `PATCH /api/contratos/[id]`:
 **Cliente:** Solicitacoes (nova + lista), Contratos (os seus).
 
 ## Tipos e campos (MVP: Club e Tracao)
-- **Club:** nome, cpf, email, whatsapp, plano, valor, forma_pagamento, inicio, duracao, vendedor.
-- **Tracao:** nome, cpf, email, whatsapp, turma, valor_total, parcelas, forma_pagamento, inicio, vendedor.
+- **Club (PJ):** razao_social, cnpj, endereco, cep, rep_nome, cpf, rg, endereco_rep_legal, email, valor_total, valor_extenso, **parcelas** (parcelamento flexivel, ver secao abaixo), vencimento.
+- **Tracao:** nome, cpf, email, whatsapp, turma, valor_total, parcelas (numero simples), forma_pagamento, inicio, vendedor.
 - (Fase 2: PJ e Fornecedor.) Nomes das chaves devem bater com as variaveis do Modelo ClickSign.
+
+## Parcelamento flexivel (Club) — consolidacao em FORMA_PGTO
+- O Club NAO tem campo unico de forma de pagamento: o `schema_campos` traz o campo `parcelas` com `type: "parcelas"` (novo tipo de campo do schema, generico — hoje so o Club usa).
+- **UI** (`components/parcelas-input.tsx`): lista dinamica de parcelas — cada uma com metodo (Pix, Boleto, Cartao de credito, Transferencia bancaria), valor (mascara BRL) e data (date). Botoes adicionar/remover; comeca com 1 parcela. Mostra a soma em tempo real comparada ao `valor_total`; se divergir, exibe aviso (nao bloqueia). Mobile-first (campos empilhados no mobile, grid 3 colunas no sm+). Usada no form externo, no console Etax e na edicao da solicitacao (`dados-editor`).
+- **Canonico** em `dados.parcelas`: `Array<{ metodo: string, valor: number (reais), data: string ISO }>`, normalizado server-side em `normalizeDados` (via `lib/parcelas.ts#normalizeParcelas` — descarta linhas vazias). Validacao client em `validateForm` (via `validateParcelas`).
+- **Consolidacao (Opcao A — modelo ClickSign NAO muda):** na geracao do contrato (`gerar-contrato/route.ts`), `lib/parcelas.ts#consolidarFormaPgto` transforma as parcelas num texto unico enviado na variavel `FORMA_PGTO`. Ex.: `"Entrada de R$ 20.000,00 via Pix em 07/07/2026; 2ª parcela de R$ 5.000,00 via Boleto em 08/08/2026"`. 1ª parcela = "Entrada" (ou "Parcela unica" se houver so uma); a chave `parcelas` e removida do template.data.
+- **Compatibilidade:** solicitacoes antigas com `dados.forma_pgto` (string) continuam funcionando — sem `dados.parcelas`, o valor antigo segue direto para FORMA_PGTO. A consolidacao so ocorre quando `dados.parcelas` e um array (o `parcelas` numerico do Tracao nao e afetado).
+- Migracao do schema: `scripts/migration-club-parcelamento.mjs` (idempotente; ja aplicada).
 
 ## Cadastro de modelos (upload .docx)
 Fluxo: advogado sobe um `.docx` com placeholders `{{VARIAVEL}}` → sistema faz 3 coisas automaticamente:

@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import type { CampoSchema } from "@/lib/types";
 import { inferMask, formatCanonical } from "@/lib/masks";
 import { CampoInput, validateForm } from "@/components/campo-input";
+import { ParcelasInput } from "@/components/parcelas-input";
+import {
+  parseParcelas,
+  consolidarFormaPgto,
+  type Parcela,
+} from "@/lib/parcelas";
+
+type FormValue = string | number | Parcela[];
 
 export function DadosEditor({
   solicitacaoId,
@@ -19,16 +27,18 @@ export function DadosEditor({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState<Record<string, string | number>>({});
+  const [formData, setFormData] = useState<Record<string, FormValue>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function startEditing() {
-    const initial: Record<string, string | number> = {};
+    const initial: Record<string, FormValue> = {};
     for (const campo of schema) {
       const val = dados[campo.key];
-      if (val == null || val === "") {
+      if (campo.type === "parcelas") {
+        initial[campo.key] = parseParcelas(val);
+      } else if (val == null || val === "") {
         initial[campo.key] = "";
       } else if (typeof val === "number") {
         initial[campo.key] = val;
@@ -49,7 +59,7 @@ export function DadosEditor({
     setFieldErrors({});
   }
 
-  function handleChange(key: string, value: string | number) {
+  function handleChange(key: string, value: FormValue) {
     setFormData((prev) => ({ ...prev, [key]: value }));
     if (fieldErrors[key]) {
       setFieldErrors((prev) => {
@@ -96,6 +106,10 @@ export function DadosEditor({
 
   function displayValue(campo: CampoSchema): string {
     const val = dados[campo.key];
+    if (campo.type === "parcelas") {
+      const parcelas = parseParcelas(val);
+      return parcelas.length > 0 ? consolidarFormaPgto(parcelas) : "—";
+    }
     if (val == null || val === "") return "—";
     const mask = inferMask(campo.key, campo.type);
     if (mask) return formatCanonical(val, mask);
@@ -144,20 +158,39 @@ export function DadosEditor({
 
       {editing ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          {schema.map((campo) => (
-            <CampoInput
-              key={campo.key}
-              campo={campo}
-              value={formData[campo.key]}
-              onChange={(v) => handleChange(campo.key, v)}
-              error={fieldErrors[campo.key]}
-            />
-          ))}
+          {schema.map((campo) =>
+            campo.type === "parcelas" ? (
+              <div key={campo.key} className="sm:col-span-2">
+                <ParcelasInput
+                  campo={campo}
+                  value={formData[campo.key]}
+                  onChange={(v) => handleChange(campo.key, v)}
+                  valorTotal={
+                    typeof formData.valor_total === "number"
+                      ? formData.valor_total
+                      : undefined
+                  }
+                  error={fieldErrors[campo.key]}
+                />
+              </div>
+            ) : (
+              <CampoInput
+                key={campo.key}
+                campo={campo}
+                value={formData[campo.key] as string | number | undefined}
+                onChange={(v) => handleChange(campo.key, v)}
+                error={fieldErrors[campo.key]}
+              />
+            )
+          )}
         </div>
       ) : (
         <dl className="grid gap-3 sm:grid-cols-2">
           {schema.map((campo) => (
-            <div key={campo.key}>
+            <div
+              key={campo.key}
+              className={campo.type === "parcelas" ? "sm:col-span-2" : undefined}
+            >
               <dt className="text-sm text-[var(--color-text-mute)]">{campo.label}</dt>
               <dd className="text-sm font-medium">{displayValue(campo)}</dd>
             </div>

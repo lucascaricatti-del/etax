@@ -20,13 +20,16 @@ const schemaClubPJ = [
   { key: "email", label: "E-mail do representante", type: "email", required: true, placeholder: "email@empresa.com" },
   { key: "valor_total", label: "Valor total", type: "text", required: true, placeholder: "R$ 0,00" },
   { key: "valor_extenso", label: "Valor por extenso", type: "text", required: true, placeholder: "mil reais" },
-  { key: "forma_pgto", label: "Forma de pagamento", type: "select", required: true, options: ["Pix", "Boleto", "Cartão de crédito", "Transferência bancária"] },
+  // Parcelamento flexível: lista dinâmica de parcelas {metodo, valor, data}.
+  // Na geração, é consolidado num texto único para a variável FORMA_PGTO do modelo.
+  { key: "parcelas", label: "Parcelamento", type: "parcelas", required: true },
   { key: "vencimento", label: "Vencimento", type: "date", required: true },
 ];
 
 // Variáveis do modelo ClickSign — lista das keys que serão enviadas como template.data
 // Na ClickSign as variáveis são em MAIÚSCULAS; a normalização é feita no código ao montar o envelope.
-const variaveis = schemaClubPJ.map((c) => c.key);
+// 'parcelas' vira a variável FORMA_PGTO (texto consolidado) — o modelo não tem variável PARCELAS.
+const variaveis = schemaClubPJ.map((c) => (c.key === "parcelas" ? "forma_pgto" : c.key));
 
 async function seed() {
   // 1. Atualizar schema_campos do Club

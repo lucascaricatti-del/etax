@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { CampoSchema } from "@/lib/types";
 import { inferMask, applyMask, validateField, type MaskType } from "@/lib/masks";
+import { validateParcelas } from "@/lib/parcelas";
 
 const inputClass = "etax-input";
 const errorInputClass = "etax-input etax-input-error";
@@ -120,11 +121,16 @@ export function CampoInput({
 // ---------------------------------------------------------------------------
 
 export function validateForm(
-  dados: Record<string, string | number>,
+  dados: Record<string, unknown>,
   schema: CampoSchema[]
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   for (const campo of schema) {
+    if (campo.type === "parcelas") {
+      const err = validateParcelas(dados[campo.key], campo.required);
+      if (err) errors[campo.key] = err;
+      continue;
+    }
     const mask = inferMask(campo.key, campo.type);
     const err = validateField(dados[campo.key], mask, campo.required);
     if (err) errors[campo.key] = err;

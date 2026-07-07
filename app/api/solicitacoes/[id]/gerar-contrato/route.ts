@@ -11,6 +11,7 @@ import {
   slugifyFilename,
 } from "@/lib/clicksign";
 import { formatDadosForClickSign } from "@/lib/masks";
+import { parseParcelas, consolidarFormaPgto } from "@/lib/parcelas";
 
 /** Validate that workspace config has all required fields including CPFs */
 function validateConfig(wsConfig: Record<string, unknown>): string | null {
@@ -321,6 +322,16 @@ export async function POST(
     // 4. Preparar dados do template (keys minúsculas → MAIÚSCULAS)
     const schemaForFormat = (tipoContrato.schema_campos ?? []) as Array<{ key: string; type?: string }>;
     const dadosForClickSign = formatDadosForClickSign(solicitacao.dados, schemaForFormat);
+
+    // Parcelamento flexível (Club): consolida as parcelas num texto único para
+    // a variável FORMA_PGTO do modelo (Opção A — modelo ClickSign não muda).
+    // Só ocorre quando dados.parcelas é um array (Tração usa 'parcelas' numérico).
+    const parcelasFlex = parseParcelas(solicitacao.dados.parcelas);
+    if (parcelasFlex.length > 0) {
+      dadosForClickSign.forma_pgto = consolidarFormaPgto(parcelasFlex);
+      delete dadosForClickSign.parcelas;
+    }
+
     const templateData = toTemplateData(dadosForClickSign);
     const envelopeName = `${tipoContrato.nome} — ${contraparte.nome}`;
     const filename = slugifyFilename(

@@ -3,6 +3,10 @@
 import { useState } from "react";
 import type { TipoContrato } from "@/lib/types";
 import { CampoInput, validateForm } from "@/components/campo-input";
+import { ParcelasInput } from "@/components/parcelas-input";
+import type { Parcela } from "@/lib/parcelas";
+
+type FormValue = string | number | Parcela[];
 
 export function ContratoForm({
   tipoContrato,
@@ -15,7 +19,7 @@ export function ContratoForm({
   workspaces: Array<{ id: string; nome: string; nome_fantasia?: string | null }>;
   defaultWorkspaceId: string | null;
 }) {
-  const [dados, setDados] = useState<Record<string, string | number>>({});
+  const [dados, setDados] = useState<Record<string, FormValue>>({});
   const [workspaceId, setWorkspaceId] = useState(defaultWorkspaceId ?? "");
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
@@ -23,7 +27,7 @@ export function ContratoForm({
   const [errorMessage, setErrorMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  function handleChange(key: string, value: string | number) {
+  function handleChange(key: string, value: FormValue) {
     setDados((prev) => ({ ...prev, [key]: value }));
     if (fieldErrors[key]) {
       setFieldErrors((prev) => {
@@ -118,15 +122,28 @@ export function ContratoForm({
         </div>
       )}
 
-      {tipoContrato.schema_campos.map((campo) => (
-        <CampoInput
-          key={campo.key}
-          campo={campo}
-          value={dados[campo.key]}
-          onChange={(v) => handleChange(campo.key, v)}
-          error={fieldErrors[campo.key]}
-        />
-      ))}
+      {tipoContrato.schema_campos.map((campo) =>
+        campo.type === "parcelas" ? (
+          <ParcelasInput
+            key={campo.key}
+            campo={campo}
+            value={dados[campo.key]}
+            onChange={(v) => handleChange(campo.key, v)}
+            valorTotal={
+              typeof dados.valor_total === "number" ? dados.valor_total : undefined
+            }
+            error={fieldErrors[campo.key]}
+          />
+        ) : (
+          <CampoInput
+            key={campo.key}
+            campo={campo}
+            value={dados[campo.key] as string | number | undefined}
+            onChange={(v) => handleChange(campo.key, v)}
+            error={fieldErrors[campo.key]}
+          />
+        )
+      )}
 
       {status === "error" && errorMessage && (
         <div className="rounded-[var(--radius-btn)] border border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)] p-4 text-sm text-[var(--color-status-danger)]">

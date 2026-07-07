@@ -10,6 +10,8 @@
  *   - email: string lowercase trimmed
  */
 
+import { normalizeParcelas } from "./parcelas";
+
 export type MaskType = "brl" | "cnpj" | "cpf" | "cep" | "phone" | "email" | null;
 
 /** Infere o tipo de máscara pelo nome da key ou tipo do campo. */
@@ -210,6 +212,14 @@ export function normalizeDados(
 ): Record<string, unknown> {
   const result: Record<string, unknown> = { ...dados };
   for (const campo of schema) {
+    // Parcelamento flexível (Club): normaliza array de parcelas
+    if (campo.type === "parcelas") {
+      if (campo.key in result) {
+        result[campo.key] = normalizeParcelas(result[campo.key]);
+      }
+      continue;
+    }
+
     const mask = inferMask(campo.key, campo.type);
     if (!mask || result[campo.key] == null || result[campo.key] === "") continue;
 
