@@ -105,7 +105,7 @@ export function EditEmpresaForm({
                   <Trash2 size={14} />
                   Excluir
                 </button>
-                <Tooltip text="Desativa a empresa. Contratos ativos impedem a exclusão." />
+                <Tooltip text="Apaga DEFINITIVAMENTE a empresa e todos os seus dados (contratos, solicitações, contrapartes, modelos, convites). Contratos ativos impedem a exclusão. NÃO pode ser desfeito." />
               </div>
             ) : (
               <div className="flex items-center gap-2">

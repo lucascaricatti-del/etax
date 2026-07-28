@@ -67,8 +67,9 @@ Restrictas a `papel_etax = 'admin'` via `PATCH /api/contratos/[id]`:
 **Exclusao DEFINITIVA (hard delete, admin Etax)** — para limpar dados de teste:
 - `DELETE /api/contratos/[id]`: apaga eventos_assinatura, PDF do storage (`contratos-assinados`), desvincula aditivos filhos (`contrato_pai_id -> null`), apaga o contrato E a solicitacao vinculada. Irreversivel.
 - `DELETE /api/solicitacoes/[id]`: apaga a solicitacao e, se houver, o contrato gerado (mesma cascata acima). Irreversivel.
+- `DELETE /api/empresas/[id]`: apaga a empresa (workspace) em cascata — contratos (via hardDeleteContrato), solicitacoes, contrapartes, modelo_empresas, modelos especificos, workspace_invites, workspace_members, workspace_clicksign_config e o workspace. Bloqueia se houver contratos ativos (aguardando_assinatura/assinado). Usuarios Auth/profiles NAO sao apagados (so perdem o vinculo).
 - Logica compartilhada em `lib/hard-delete.ts#hardDeleteContrato`.
-- UI: botao "Excluir definitivamente" no detalhe do contrato (sempre visivel p/ admin, inclusive em soft-deleted) e botao "Excluir" no detalhe da solicitacao (admin, qualquer status).
+- UI: botao "Excluir definitivamente" no detalhe do contrato (sempre visivel p/ admin, inclusive em soft-deleted), botao "Excluir" no detalhe da solicitacao (admin, qualquer status) e botao "Excluir" no detalhe da empresa (admin).
 
 ## Menu
 **Console Etax:** Dashboard, Empresas (workspaces), Solicitacoes, Confeccao, Assinaturas, Contratos, Modelos, Configuracoes.
