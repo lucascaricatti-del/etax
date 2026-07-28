@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { GerarContratoButton } from "./gerar-contrato-button";
 import { EnviarAprovacaoButton } from "./enviar-aprovacao-button";
 import { AprovarReprovarButtons } from "./aprovar-reprovar-buttons";
+import { ExcluirSolicitacaoButton } from "./excluir-solicitacao-button";
 import { DadosEditor } from "./dados-editor";
 import { ContraparteEditor } from "./contraparte-editor";
 import type { SolicitacaoComDetalhes, CampoSchema } from "@/lib/types";
@@ -69,6 +70,8 @@ export default async function SolicitacaoDetalhePage({
   // 'gerando' = tentativa anterior falhou no meio; o mesmo botão permite retomar
   const showGerarContrato =
     (sessao?.isEtax ?? false) && ["aprovada", "gerando"].includes(s.status);
+  // Exclusão definitiva: só admin Etax, qualquer status (apaga contrato vinculado junto)
+  const showExcluir = sessao?.isAdmin ?? false;
 
   return (
     <div>
@@ -87,7 +90,10 @@ export default async function SolicitacaoDetalhePage({
           <StatusBadge status={displayStatus} />
         </div>
 
-        {(showEnviarAprovacao || showAprovarReprovar || showGerarContrato) && (
+        {(showEnviarAprovacao ||
+          showAprovarReprovar ||
+          showGerarContrato ||
+          showExcluir) && (
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             {showEnviarAprovacao && (
               <EnviarAprovacaoButton
@@ -106,6 +112,12 @@ export default async function SolicitacaoDetalhePage({
                 solicitacaoId={s.id}
                 signerNome={signerNome}
                 signerEmail={signerEmail}
+              />
+            )}
+            {showExcluir && (
+              <ExcluirSolicitacaoButton
+                solicitacaoId={s.id}
+                temContrato={Boolean(s.contrato && s.contrato.length > 0)}
               />
             )}
           </div>

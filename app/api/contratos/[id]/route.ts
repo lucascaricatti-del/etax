@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessao } from "@/lib/auth";
+import { hardDeleteContrato } from "@/lib/hard-delete";
 
 /**
  * PATCH /api/contratos/[id]
@@ -195,6 +196,71 @@ export async function PATCH(
     }
   } catch (err) {
     console.error("[PATCH /api/contratos/[id]]", err);
+    const message = err instanceof Error ? err.message : "Erro interno";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/contratos/[id] — exclusão DEFINITIVA (admin Etax).
+ * Apaga: eventos_assinatura, PDF do storage, o contrato e a solicitação vinculada.
+ * Irreversível — usado para limpar contratos de teste.
+ */
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const sessao = await getSessao();
+    if (!sessao?.isAdmin) {
+      return NextResponse.json(
+        { error: "Apenas admin Etax pode excluir definitivamente" },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await params;
+    const supabase = createAdminClient();
+
+    const { data: contrato, error: errFetch } = await supabase
+      .from("contratos")
+      .select("id, pdf_assinado_path, solicitacao_id")
+      .eq("id", id)
+      .single();
+
+    if (errFetch || !contrato) {
+      return NextResponse.json(
+        { error: "Contrato não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    await hardDeleteContrato(supabase, contrato);
+
+    // Apagar a solicitação vinculada (o contrato já foi removido; falha aqui não desfaz)
+    if (contrato.solicitacao_id) {
+      const { error: errSol } = await supabase
+        .from("solicitacoes")
+        .delete()
+        .eq("id", contrato.solicitacao_id);
+
+      if (errSol) {
+        console.error(
+          "[DELETE /api/contratos/[id]] Contrato apagado, mas falhou ao apagar solicitação vinculada:",
+          errSol
+        );
+        return NextResponse.json({
+          message:
+            "Contrato excluído definitivamente, mas a solicitação vinculada não pôde ser apagada",
+        });
+      }
+    }
+
+    return NextResponse.json({
+      message: "Contrato excluído definitivamente",
+    });
+  } catch (err) {
+    console.error("[DELETE /api/contratos/[id]]", err);
     const message = err instanceof Error ? err.message : "Erro interno";
     return NextResponse.json({ error: message }, { status: 500 });
   }

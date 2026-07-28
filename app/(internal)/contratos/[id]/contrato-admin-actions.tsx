@@ -33,6 +33,7 @@ export function ContratoAdminActions({
   const [showDistrato, setShowDistrato] = useState(false);
   const [showAditivo, setShowAditivo] = useState(false);
   const [showExcluir, setShowExcluir] = useState(false);
+  const [showExcluirDef, setShowExcluirDef] = useState(false);
 
   // Distrato fields
   const [dataDistrato, setDataDistrato] = useState("");
@@ -59,6 +60,27 @@ export function ContratoAdminActions({
       setShowDistrato(false);
       setShowAditivo(false);
       setShowExcluir(false);
+    } catch {
+      setError("Erro de conexão");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function doHardDelete() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/contratos/${contrato.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Erro ao excluir definitivamente");
+        return;
+      }
+      router.push("/contratos");
+      router.refresh();
     } catch {
       setError("Erro de conexão");
     } finally {
@@ -274,6 +296,50 @@ export function ContratoAdminActions({
           )}
         </div>
       )}
+
+      {/* Hard delete — sempre disponível para admin (inclusive em contrato soft-deleted) */}
+      <div className="border-t border-[var(--color-line)] pt-3 mt-2">
+        {!showExcluirDef ? (
+          <button
+            onClick={() => setShowExcluirDef(true)}
+            disabled={loading}
+            className="etax-btn etax-btn-danger w-full min-h-[48px] justify-between"
+          >
+            <span className="flex items-center gap-2">
+              <Trash2 size={16} />
+              Excluir definitivamente
+            </span>
+            <Tooltip text="Apaga do banco: contrato, eventos de assinatura, PDF e a solicitação vinculada. NÃO pode ser desfeito." />
+          </button>
+        ) : (
+          <div className="etax-card p-4 space-y-3 border border-[var(--color-status-danger)]">
+            <p className="text-sm font-medium text-[var(--color-status-danger)]">
+              Excluir DEFINITIVAMENTE este contrato?
+            </p>
+            <p className="text-xs text-[var(--color-text-soft)]">
+              Isso apaga do banco o contrato, os eventos de assinatura, o PDF
+              assinado e a solicitação vinculada. Esta ação NÃO pode ser
+              desfeita.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowExcluirDef(false)}
+                disabled={loading}
+                className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={doHardDelete}
+                disabled={loading}
+                className="etax-btn flex-1 min-h-[48px] bg-[var(--color-status-danger)] text-white hover:opacity-90"
+              >
+                {loading ? "Excluindo..." : "Excluir de vez"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
