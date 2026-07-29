@@ -46,11 +46,13 @@ export function Sidebar({
   isEtax,
   isAdmin,
   pendingApprovals,
+  workspaceName,
 }: {
   userName: string;
   isEtax: boolean;
   isAdmin: boolean;
   pendingApprovals: number;
+  workspaceName?: string | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -84,6 +86,21 @@ export function Sidebar({
         <p className="mt-2.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--color-sidebar-text)]">
           Consultoria Tributária Empresarial
         </p>
+
+        {/* Company name — cliente view */}
+        {workspaceName && (
+          <div className="mt-4 px-3 py-2.5 rounded-[var(--radius-btn)] bg-[var(--color-sidebar-card)] border border-[var(--color-sidebar-line)]">
+            <p className="text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--color-sidebar-text)]">
+              Empresa
+            </p>
+            <p
+              className="mt-0.5 text-[13px] font-semibold text-[var(--color-sidebar-text-bright)] truncate"
+              title={workspaceName}
+            >
+              {workspaceName}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
@@ -131,8 +148,12 @@ export function Sidebar({
             <p className="text-[13px] font-medium text-[var(--color-sidebar-text-bright)] truncate">
               {userName}
             </p>
-            <p className="text-[11px] text-[var(--color-sidebar-text)]">
-              {isEtax ? (isAdmin ? "Etax · Admin" : "Etax") : "Cliente"}
+            <p className="text-[11px] text-[var(--color-sidebar-text)] truncate">
+              {isEtax
+                ? isAdmin
+                  ? "Etax · Admin"
+                  : "Etax"
+                : workspaceName ?? "Cliente"}
             </p>
           </div>
           <button

@@ -12,12 +12,14 @@ export function AppShell({
   isEtax,
   isAdmin,
   pendingApprovals,
+  workspaceName,
 }: {
   children: React.ReactNode;
   userName: string;
   isEtax: boolean;
   isAdmin: boolean;
   pendingApprovals: number;
+  workspaceName?: string | null;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
@@ -79,6 +81,7 @@ export function AppShell({
           isEtax={isEtax}
           isAdmin={isAdmin}
           pendingApprovals={pendingApprovals}
+          workspaceName={workspaceName}
         />
       </div>
 
