@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FileUp } from "lucide-react";
 import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { redirect } from "next/navigation";
@@ -91,6 +92,15 @@ export default async function ContratosPage({
             {hasFilters ? " (filtrado)" : ""}
           </p>
         </div>
+        {sessao.isAdmin && (
+          <Link
+            href="/contratos/importar"
+            className="etax-btn etax-btn-secondary min-h-[44px]"
+          >
+            <FileUp size={16} />
+            Importar contrato
+          </Link>
+        )}
       </div>
 
       <ContratosFilters

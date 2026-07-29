@@ -101,6 +101,14 @@ Dados salvos no modelo:
 
 API: `POST /api/modelos/upload` (FormData: `file` + `nome`) → retorna `{clicksign_template_key, variaveis, schema_campos}`.
 
+## Importacao de contratos antigos (PDF + IA)
+Para contratos assinados FORA do sistema (legado). Admin Etax, em `/contratos/importar` (botao "Importar contrato" no header de /contratos):
+1. Seleciona empresa + tipo de contrato (+ modelo opcional, p/ natureza_financeira no dashboard) e anexa o PDF (max 4MB — limite de body da Vercel).
+2. `POST /api/contratos/importar/extrair`: envia o PDF direto para a Anthropic Messages API (document block base64) e retorna campos estruturados (nome, cpf_cnpj, email, telefone, valor_total, data_assinatura, vigencia_inicio/fim). Requer `ANTHROPIC_API_KEY` (modelo via `ANTHROPIC_MODEL`, default claude-sonnet-4-5). Ha fallback "Preencher manualmente" sem IA.
+3. Admin revisa os campos num formulario editavel e confirma.
+4. `POST /api/contratos/importar` (FormData: file + payload JSON): reusa contraparte por cpf_cnpj (comparacao por digitos) no workspace ou cria; insere contrato `status_assinatura='assinado'` (principal, conta no dashboard; `assinado_em` = data informada ao meio-dia UTC); sobe o PDF em `contratos-assinados/{id}.pdf` e grava `pdf_assinado_path`.
+- Contratos importados NAO tem solicitacao nem envelope ClickSign (`solicitacao_id`/`clicksign_envelope_id` nulos).
+
 ## Configuracao de assinatura por empresa
 Tabela `workspace_clicksign_config` (1:1 com `workspaces`):
 - **clicksign_token**: token da API ClickSign da empresa (cada empresa pode ter o seu).
@@ -152,6 +160,8 @@ GOOGLE_PRIVATE_KEY=
 SHEET_ID=
 TEMPLATE_CLUB=
 TEMPLATE_TRACAO=
+ANTHROPIC_API_KEY=            # leitura de PDF na importacao de contratos antigos
+ANTHROPIC_MODEL=              # opcional (default claude-sonnet-4-5)
 ```
 
 ## Ordem de construcao (fatias verticais - uma de cada vez)
