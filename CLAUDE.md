@@ -199,7 +199,7 @@ ANTHROPIC_MODEL=              # opcional (default claude-sonnet-4-5)
 ### Componentes compartilhados
 - **AppShell** (`components/app-shell.tsx`): wrapper que gerencia sidebar desktop (fixa) + drawer mobile (slide). Controla overlay, body scroll lock, e fecha drawer ao navegar.
 - **MobileHeader** (`components/mobile-header.tsx`): header fixo `lg:hidden` com logo e hamburger.
-- **Sidebar** (`components/sidebar.tsx`): navegacao com icones lucide. Nav items diferem por `isEtax`/cliente. Posicionamento controlado pelo AppShell.
+- **Sidebar** (`components/sidebar.tsx`): navegacao com icones lucide. Nav items diferem por `isEtax`/cliente. Posicionamento controlado pelo AppShell. Na visao do cliente, exibe o nome da empresa (nome_fantasia, fallback razao social) num card abaixo do logo e no rodape (no lugar de "Cliente") — nome buscado no layout `(internal)` via `sessao.workspaceIds[0]` e passado como prop `workspaceName`.
 - **FilterBar** (`components/filter-bar.tsx`): wrapper de filtros. No mobile, botao "Filtros" toggle visibilidade. No desktop, filtros sempre em linha horizontal. Suporta `onClear` e indicador de filtros ativos.
 - **SegmentedControl** (`components/segmented-control.tsx`): toggle visual com `data-active`. Usa classes `.etax-segmented` / `.etax-segmented-item`.
 - **Tooltip** (`components/tooltip.tsx`): icone `HelpCircle` com popover escuro. Abre via hover/focus/click (funciona no tap mobile).
