@@ -2,7 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, GitBranch, FileX2, Trash2, RotateCcw } from "lucide-react";
+import {
+  BarChart3,
+  GitBranch,
+  FileX2,
+  Trash2,
+  RotateCcw,
+  AlertTriangle,
+  CircleCheck,
+  Pencil,
+  Undo2,
+} from "lucide-react";
 import { Tooltip } from "@/components/tooltip";
 
 interface ContratoData {
@@ -13,6 +23,11 @@ interface ContratoData {
   contrato_pai_id: string | null;
   excluido_em: string | null;
   workspace_id: string | null;
+  inadimplente_em: string | null;
+  valor_inadimplencia: number | null;
+  inadimplencia_observacao: string | null;
+  data_distrato: string | null;
+  valor_distrato: number | null;
 }
 
 interface ContratoOption {
@@ -31,13 +46,24 @@ export function ContratoAdminActions({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDistrato, setShowDistrato] = useState(false);
+  const [showEditarDistrato, setShowEditarDistrato] = useState(false);
+  const [showDesfazerDistrato, setShowDesfazerDistrato] = useState(false);
   const [showAditivo, setShowAditivo] = useState(false);
   const [showExcluir, setShowExcluir] = useState(false);
   const [showExcluirDef, setShowExcluirDef] = useState(false);
+  const [showInadimplencia, setShowInadimplencia] = useState(false);
+  const [showRegularizar, setShowRegularizar] = useState(false);
 
-  // Distrato fields
-  const [dataDistrato, setDataDistrato] = useState("");
-  const [valorDistrato, setValorDistrato] = useState("");
+  // Distrato fields (prefill com valores atuais p/ edição)
+  const [dataDistrato, setDataDistrato] = useState(contrato.data_distrato ?? "");
+  const [valorDistrato, setValorDistrato] = useState(
+    contrato.valor_distrato != null ? String(contrato.valor_distrato) : ""
+  );
+
+  // Inadimplência fields
+  const [dataInadimplencia, setDataInadimplencia] = useState("");
+  const [valorInadimplencia, setValorInadimplencia] = useState("");
+  const [obsInadimplencia, setObsInadimplencia] = useState("");
 
   // Aditivo fields
   const [contratoPaiId, setContratoPaiId] = useState("");
@@ -58,8 +84,12 @@ export function ContratoAdminActions({
       }
       router.refresh();
       setShowDistrato(false);
+      setShowEditarDistrato(false);
+      setShowDesfazerDistrato(false);
       setShowAditivo(false);
       setShowExcluir(false);
+      setShowInadimplencia(false);
+      setShowRegularizar(false);
     } catch {
       setError("Erro de conexão");
     } finally {
@@ -92,6 +122,7 @@ export function ContratoAdminActions({
   const isAssinado = contrato.status_assinatura === "assinado";
   const isPrincipal = contrato.natureza_documento === "principal";
   const isDistratado = contrato.status_assinatura === "distratado";
+  const isInadimplente = !!contrato.inadimplente_em && isAssinado;
 
   return (
     <div className="space-y-3">
@@ -185,6 +216,131 @@ export function ContratoAdminActions({
             </>
           )}
 
+          {/* Inadimplência — contrato segue assinado; é marcação de risco reversível */}
+          {isAssinado && !isInadimplente && (
+            <>
+              {!showInadimplencia ? (
+                <button
+                  onClick={() => setShowInadimplencia(true)}
+                  disabled={loading}
+                  className="etax-btn etax-btn-secondary w-full min-h-[48px] justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle size={16} />
+                    Marcar inadimplência
+                  </span>
+                  <Tooltip text="Sinaliza atraso de pagamento. Não altera a receita — aparece como valor em risco. Reversível." />
+                </button>
+              ) : (
+                <div className="etax-card p-4 space-y-3">
+                  <p className="text-sm font-medium text-[var(--color-text)]">
+                    Marcar como inadimplente
+                  </p>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                      Inadimplente desde
+                    </label>
+                    <input
+                      type="date"
+                      value={dataInadimplencia}
+                      onChange={(e) => setDataInadimplencia(e.target.value)}
+                      className="etax-input w-full min-h-[48px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                      Valor em aberto (R$) — opcional
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={valorInadimplencia}
+                      onChange={(e) => setValorInadimplencia(e.target.value)}
+                      className="etax-input w-full min-h-[48px]"
+                      placeholder="Se vazio, usa o valor do contrato"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                      Observação — opcional
+                    </label>
+                    <input
+                      type="text"
+                      value={obsInadimplencia}
+                      onChange={(e) => setObsInadimplencia(e.target.value)}
+                      className="etax-input w-full min-h-[48px]"
+                      placeholder="Ex.: 3 parcelas em atraso, em negociação"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowInadimplencia(false)}
+                      className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() =>
+                        doAction("marcar_inadimplente", {
+                          inadimplente_em: dataInadimplencia,
+                          valor_inadimplencia: valorInadimplencia || null,
+                          inadimplencia_observacao: obsInadimplencia || null,
+                        })
+                      }
+                      disabled={loading || !dataInadimplencia}
+                      className="etax-btn etax-btn-primary flex-1 min-h-[48px]"
+                    >
+                      Confirmar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {isInadimplente && (
+            <>
+              {!showRegularizar ? (
+                <button
+                  onClick={() => setShowRegularizar(true)}
+                  disabled={loading}
+                  className="etax-btn etax-btn-secondary w-full min-h-[48px] justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <CircleCheck size={16} />
+                    Regularizar inadimplência
+                  </span>
+                  <Tooltip text="Remove a marcação de inadimplência (pagamento regularizado)" />
+                </button>
+              ) : (
+                <div className="etax-card p-4 space-y-3">
+                  <p className="text-sm font-medium text-[var(--color-text)]">
+                    Confirmar regularização?
+                  </p>
+                  <p className="text-xs text-[var(--color-text-soft)]">
+                    O contrato deixa de aparecer como inadimplente e sai do
+                    valor em risco.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowRegularizar(false)}
+                      className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => doAction("regularizar_inadimplencia")}
+                      disabled={loading}
+                      className="etax-btn etax-btn-primary flex-1 min-h-[48px]"
+                    >
+                      Regularizar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {/* Divider */}
           <div className="border-t border-[var(--color-line)] my-2" />
 
@@ -250,6 +406,114 @@ export function ContratoAdminActions({
                       className="etax-btn flex-1 min-h-[48px] bg-[var(--color-status-danger)] text-white hover:opacity-90"
                     >
                       Confirmar distrato
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Ajustes de distrato — contrato já distratado */}
+          {isDistratado && (
+            <>
+              {!showEditarDistrato ? (
+                <button
+                  onClick={() => setShowEditarDistrato(true)}
+                  disabled={loading}
+                  className="etax-btn etax-btn-secondary w-full min-h-[48px] justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Pencil size={16} />
+                    Editar distrato
+                  </span>
+                  <Tooltip text="Corrige data e valor do distrato. O churn no financeiro recalcula automaticamente." />
+                </button>
+              ) : (
+                <div className="etax-card p-4 space-y-3">
+                  <p className="text-sm font-medium text-[var(--color-text)]">
+                    Corrigir distrato
+                  </p>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                      Data do distrato
+                    </label>
+                    <input
+                      type="date"
+                      value={dataDistrato}
+                      onChange={(e) => setDataDistrato(e.target.value)}
+                      className="etax-input w-full min-h-[48px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--color-text-mute)] uppercase mb-1">
+                      Valor real do distrato (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={valorDistrato}
+                      onChange={(e) => setValorDistrato(e.target.value)}
+                      className="etax-input w-full min-h-[48px]"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowEditarDistrato(false)}
+                      className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() =>
+                        doAction("editar_distrato", {
+                          data_distrato: dataDistrato,
+                          valor_distrato: parseFloat(valorDistrato),
+                        })
+                      }
+                      disabled={loading || !dataDistrato || !valorDistrato}
+                      className="etax-btn etax-btn-primary flex-1 min-h-[48px]"
+                    >
+                      Salvar correção
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!showDesfazerDistrato ? (
+                <button
+                  onClick={() => setShowDesfazerDistrato(true)}
+                  disabled={loading}
+                  className="etax-btn etax-btn-danger w-full min-h-[48px] justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Undo2 size={16} />
+                    Desfazer distrato
+                  </span>
+                  <Tooltip text="Reverte o distrato: contrato volta a assinado e o churn é removido do financeiro" />
+                </button>
+              ) : (
+                <div className="etax-card p-4 space-y-3 border border-[var(--color-status-danger)]">
+                  <p className="text-sm font-medium text-[var(--color-status-danger)]">
+                    Desfazer o distrato deste contrato?
+                  </p>
+                  <p className="text-xs text-[var(--color-text-soft)]">
+                    O contrato volta ao status assinado e o valor deixa de
+                    contar como churn no financeiro.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowDesfazerDistrato(false)}
+                      className="etax-btn etax-btn-ghost flex-1 min-h-[48px]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => doAction("desfazer_distrato")}
+                      disabled={loading}
+                      className="etax-btn flex-1 min-h-[48px] bg-[var(--color-status-danger)] text-white hover:opacity-90"
+                    >
+                      Desfazer distrato
                     </button>
                   </div>
                 </div>

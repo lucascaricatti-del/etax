@@ -299,6 +299,33 @@ export default async function DashboardPage({
         </div>
       </section>
 
+      {/* Inadimplência — risco atual (não desconta da receita) */}
+      {fin.inadimplencia.qtd > 0 && (
+        <Link
+          href="/contratos"
+          className="block etax-card mb-8 border-l-4 border-[var(--color-status-danger)] hover:ring-2 hover:ring-[var(--color-primary)] transition-shadow active:scale-[0.99]"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--color-status-danger)]">
+                Inadimplência
+              </p>
+              <p className="text-xs text-[var(--color-text-soft)] mt-0.5">
+                {fin.inadimplencia.qtd}{" "}
+                {fin.inadimplencia.qtd === 1
+                  ? "contrato inadimplente"
+                  : "contratos inadimplentes"}{" "}
+                — {formatBRL(fin.inadimplencia.valorEmRisco)} em risco (não
+                desconta da receita)
+              </p>
+            </div>
+            <span className="inline-flex items-center justify-center min-w-[32px] h-8 px-2 rounded-full bg-[var(--color-status-danger-bg)] text-[var(--color-status-danger)] text-sm font-bold">
+              {fin.inadimplencia.qtd}
+            </span>
+          </div>
+        </Link>
+      )}
+
       {/* Per-empresa breakdown */}
       {fin.porEmpresa.length > 0 && !params.empresa && (
         <section className="mb-8">

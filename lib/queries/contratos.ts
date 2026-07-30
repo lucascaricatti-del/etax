@@ -8,7 +8,7 @@ import type { Sessao } from "@/lib/auth";
  */
 
 const CONTRATO_SELECT_FULL =
-  "id, tipo, valor, status_assinatura, status_vigencia, vigencia_inicio, vigencia_fim, assinado_em, criado_em, pdf_assinado_path, workspace_id, natureza_documento, conta_no_dashboard, contrato_pai_id, data_distrato, valor_distrato, excluido_em, modelo_id, contraparte:contrapartes(nome, cpf_cnpj), workspace:workspaces(id, nome, nome_fantasia), modelo:modelos(id, nome, natureza_financeira)";
+  "id, tipo, valor, status_assinatura, status_vigencia, vigencia_inicio, vigencia_fim, assinado_em, criado_em, pdf_assinado_path, workspace_id, natureza_documento, conta_no_dashboard, contrato_pai_id, data_distrato, valor_distrato, inadimplente_em, valor_inadimplencia, excluido_em, modelo_id, contraparte:contrapartes(nome, cpf_cnpj), workspace:workspaces(id, nome, nome_fantasia), modelo:modelos(id, nome, natureza_financeira)";
 
 const CONTRATO_SELECT_COMPACT =
   "id, tipo, valor, status_assinatura, criado_em, assinado_em, workspace_id, natureza_documento, conta_no_dashboard, excluido_em, modelo_id, contraparte:contrapartes(nome), workspace:workspaces(id, nome, nome_fantasia), modelo:modelos(id, nome, natureza_financeira)";
@@ -251,6 +251,40 @@ export interface ContratoFinanceiro {
   workspace_nome_fantasia: string | null;
 }
 
+/**
+ * Snapshot da inadimplência ATUAL (estado corrente, não é por período).
+ * Contratos assinados marcados como inadimplentes, mesma regra de inclusão
+ * do dashboard. Valor em risco = COALESCE(valor_inadimplencia, valor).
+ * Inadimplência NÃO desconta da receita — é indicador de risco separado.
+ */
+async function fetchInadimplenciaAtual(
+  sessao: Sessao,
+  opts?: { workspaceId?: string; tipo?: string }
+) {
+  const supabase = createAdminClient();
+
+  let q = supabase
+    .from("contratos")
+    .select("id, valor, valor_inadimplencia, inadimplente_em")
+    .eq("status_assinatura", "assinado")
+    .not("inadimplente_em", "is", null)
+    .eq("natureza_documento", "principal")
+    .eq("conta_no_dashboard", true)
+    .is("excluido_em", null);
+
+  q = applyWorkspaceScope(q, sessao);
+  if (opts?.workspaceId) q = q.eq("workspace_id", opts.workspaceId);
+  if (opts?.tipo) q = q.eq("tipo", opts.tipo);
+
+  const { data } = await q;
+  const rows = data ?? [];
+  const valorEmRisco = rows.reduce(
+    (sum, r) => sum + (r.valor_inadimplencia ?? r.valor ?? 0),
+    0
+  );
+  return { qtd: rows.length, valorEmRisco };
+}
+
 export async function fetchDashboardFinanceiro(
   sessao: Sessao,
   filters?: DashboardFinanceiroFilters
@@ -301,9 +335,10 @@ export async function fetchDashboardFinanceiro(
     qDistratados = qDistratados.eq("workspace_id", filters.workspaceId);
   }
 
-  const [resAssinados, resDistratados] = await Promise.all([
+  const [resAssinados, resDistratados, inadimplencia] = await Promise.all([
     qAssinados,
     qDistratados,
+    fetchInadimplenciaAtual(sessao, { workspaceId: filters?.workspaceId }),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -385,6 +420,7 @@ export async function fetchDashboardFinanceiro(
     porEmpresa,
     assinados,
     distratados,
+    inadimplencia,
   };
 }
 
@@ -484,9 +520,10 @@ export async function fetchFinanceiroPeriodo(
     qDistratados = qDistratados.eq("tipo", filters.tipo);
   }
 
-  const [resAssinados, resDistratados] = await Promise.all([
+  const [resAssinados, resDistratados, inadimplencia] = await Promise.all([
     qAssinados,
     qDistratados,
+    fetchInadimplenciaAtual(sessao, { tipo: filters?.tipo }),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -584,5 +621,6 @@ export async function fetchFinanceiroPeriodo(
     porTipo,
     assinados,
     distratados,
+    inadimplencia,
   };
 }

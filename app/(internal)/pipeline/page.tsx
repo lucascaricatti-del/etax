@@ -28,6 +28,7 @@ interface CardData {
   data: string;
   dataLabel: string;
   status: string;
+  inadimplente?: boolean;
 }
 
 export default async function PipelinePage() {
@@ -52,7 +53,7 @@ export default async function PipelinePage() {
     supabase
       .from("contratos")
       .select(
-        "id, tipo, valor, status_assinatura, criado_em, assinado_em, contraparte:contrapartes(nome)"
+        "id, tipo, valor, status_assinatura, criado_em, assinado_em, inadimplente_em, contraparte:contrapartes(nome)"
       )
       .in("workspace_id", ids)
       .in("status_assinatura", ["aguardando_assinatura", "assinado"])
@@ -105,6 +106,8 @@ export default async function PipelinePage() {
       dataLabel:
         c.status_assinatura === "assinado" ? "Assinado em" : "Enviado em",
       status: c.status_assinatura,
+      inadimplente:
+        !!c.inadimplente_em && c.status_assinatura === "assinado",
     };
     if (c.status_assinatura === "assinado") {
       colAssinados.push(card);
@@ -183,8 +186,11 @@ export default async function PipelinePage() {
                       <p className="text-sm font-semibold text-[var(--color-text)] truncate">
                         {card.nome}
                       </p>
-                      <div className="flex-shrink-0">
+                      <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
                         <StatusBadge status={card.status} />
+                        {card.inadimplente && (
+                          <StatusBadge status="inadimplente" />
+                        )}
                       </div>
                     </div>
                     <div className="space-y-0.5 text-xs text-[var(--color-text-soft)]">

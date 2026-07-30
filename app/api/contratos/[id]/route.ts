@@ -10,6 +10,10 @@ import { hardDeleteContrato } from "@/lib/hard-delete";
  * - action: "toggle_dashboard" → flip conta_no_dashboard
  * - action: "marcar_aditivo" → set natureza_documento='aditivo', link contrato_pai_id
  * - action: "registrar_distrato" → set status_assinatura='distratado', data_distrato, valor_distrato
+ * - action: "editar_distrato" → corrige data_distrato/valor_distrato de um distratado
+ * - action: "desfazer_distrato" → reverte distrato (volta a assinado, limpa campos)
+ * - action: "marcar_inadimplente" → inadimplente_em + valor_inadimplencia/observação (opcionais)
+ * - action: "regularizar_inadimplencia" → limpa os campos de inadimplência
  * - action: "excluir" → soft delete (excluido_em + excluido_por)
  * - action: "restaurar" → undo soft delete
  */
@@ -35,7 +39,7 @@ export async function PATCH(
     // Verify contrato exists
     const { data: contrato, error: errFetch } = await supabase
       .from("contratos")
-      .select("id, status_assinatura, natureza_documento, conta_no_dashboard, excluido_em")
+      .select("id, status_assinatura, natureza_documento, conta_no_dashboard, excluido_em, inadimplente_em")
       .eq("id", id)
       .single();
 
@@ -126,6 +130,10 @@ export async function PATCH(
             status_assinatura: "distratado",
             data_distrato,
             valor_distrato: Number(valor_distrato),
+            // Distrato encerra a inadimplência — o valor vira churn definitivo
+            inadimplente_em: null,
+            valor_inadimplencia: null,
+            inadimplencia_observacao: null,
           })
           .eq("id", id);
 
@@ -135,6 +143,128 @@ export async function PATCH(
 
         return NextResponse.json({
           message: "Distrato registrado",
+        });
+      }
+
+      case "editar_distrato": {
+        const { data_distrato, valor_distrato } = body;
+        if (!data_distrato || valor_distrato == null) {
+          return NextResponse.json(
+            { error: "data_distrato e valor_distrato são obrigatórios" },
+            { status: 400 }
+          );
+        }
+
+        if (contrato.status_assinatura !== "distratado") {
+          return NextResponse.json(
+            { error: "Só contratos distratados podem ter o distrato editado" },
+            { status: 400 }
+          );
+        }
+
+        const { error } = await supabase
+          .from("contratos")
+          .update({
+            data_distrato,
+            valor_distrato: Number(valor_distrato),
+          })
+          .eq("id", id);
+
+        if (error) {
+          return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({
+          message: "Distrato atualizado",
+        });
+      }
+
+      case "desfazer_distrato": {
+        if (contrato.status_assinatura !== "distratado") {
+          return NextResponse.json(
+            { error: "Contrato não está distratado" },
+            { status: 400 }
+          );
+        }
+
+        const { error } = await supabase
+          .from("contratos")
+          .update({
+            status_assinatura: "assinado",
+            data_distrato: null,
+            valor_distrato: null,
+          })
+          .eq("id", id);
+
+        if (error) {
+          return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({
+          message: "Distrato desfeito — contrato voltou a assinado",
+        });
+      }
+
+      case "marcar_inadimplente": {
+        const { inadimplente_em, valor_inadimplencia, inadimplencia_observacao } = body;
+        if (!inadimplente_em) {
+          return NextResponse.json(
+            { error: "inadimplente_em (data) é obrigatório" },
+            { status: 400 }
+          );
+        }
+
+        if (contrato.status_assinatura !== "assinado") {
+          return NextResponse.json(
+            { error: "Só contratos assinados podem ser marcados como inadimplentes" },
+            { status: 400 }
+          );
+        }
+
+        const { error } = await supabase
+          .from("contratos")
+          .update({
+            inadimplente_em,
+            valor_inadimplencia:
+              valor_inadimplencia != null && valor_inadimplencia !== ""
+                ? Number(valor_inadimplencia)
+                : null,
+            inadimplencia_observacao: inadimplencia_observacao || null,
+          })
+          .eq("id", id);
+
+        if (error) {
+          return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({
+          message: "Contrato marcado como inadimplente",
+        });
+      }
+
+      case "regularizar_inadimplencia": {
+        if (!contrato.inadimplente_em) {
+          return NextResponse.json(
+            { error: "Contrato não está marcado como inadimplente" },
+            { status: 400 }
+          );
+        }
+
+        const { error } = await supabase
+          .from("contratos")
+          .update({
+            inadimplente_em: null,
+            valor_inadimplencia: null,
+            inadimplencia_observacao: null,
+          })
+          .eq("id", id);
+
+        if (error) {
+          return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({
+          message: "Inadimplência regularizada",
         });
       }
 

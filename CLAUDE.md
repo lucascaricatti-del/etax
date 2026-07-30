@@ -39,6 +39,7 @@ Regra: so vai a ClickSign se `aprovada` + modelo + signatario. Cada documento >=
 - **contrato_pai_id** (uuid nullable): FK para `contratos.id`. Usado quando `natureza_documento = 'aditivo'`.
 - **conta_no_dashboard** (boolean, default true): flag manual. Se false, contrato e excluido dos KPIs financeiros.
 - **data_distrato** (date) + **valor_distrato** (numeric): preenchidos quando admin registra distrato. `status_assinatura` muda para `distratado`.
+- **inadimplente_em** (date) + **valor_inadimplencia** (numeric, opcional) + **inadimplencia_observacao** (text, opcional): inadimplencia e uma DIMENSAO SEPARADA do status — o contrato segue `assinado`. `inadimplente_em` nulo = adimplente. Reversivel (regularizar limpa os 3 campos). Registrar distrato tambem limpa (vira churn definitivo). Valor em risco = COALESCE(valor_inadimplencia, valor). Migracao: `scripts/migration-inadimplencia.mjs`.
 - **excluido_em** (timestamptz) + **excluido_por** (uuid FK profiles): soft delete. Contrato some das listagens e calculos, mas permanece no banco.
 - **modelo_id** (uuid FK modelos): salvo no contrato no momento da geracao. Usado para obter `natureza_financeira` (receita/despesa/neutro) no dashboard.
 
@@ -55,12 +56,17 @@ Metricas:
 - **Receita liquida** = receita bruta - churn.
 - **Despesas** = soma dos contratos cuja `natureza_financeira` e `despesa`, assinados no mes.
 - Tudo segmentado por empresa (nome_fantasia, fallback razao social) e total consolidado.
+- **Inadimplencia** NAO desconta da receita — e exibida como indicador de risco separado (`fetchInadimplenciaAtual` retorna `{qtd, valorEmRisco}` dentro de `fetchDashboardFinanceiro` e `fetchFinanceiroPeriodo`). Banner vermelho no dashboard Etax e no /financeiro do cliente quando qtd > 0.
 
 ## Acoes administrativas (admin Etax)
 Restrictas a `papel_etax = 'admin'` via `PATCH /api/contratos/[id]`:
 - **toggle_dashboard**: alterna `conta_no_dashboard`.
 - **marcar_aditivo**: seta `natureza_documento='aditivo'`, vincula `contrato_pai_id`, desliga dashboard.
-- **registrar_distrato**: exige `data_distrato` + `valor_distrato`, muda status para `distratado`.
+- **registrar_distrato**: exige `data_distrato` + `valor_distrato`, muda status para `distratado` e limpa os campos de inadimplencia.
+- **editar_distrato**: corrige `data_distrato`/`valor_distrato` de um contrato ja distratado.
+- **desfazer_distrato**: reverte o distrato — volta a `assinado`, limpa data/valor.
+- **marcar_inadimplente**: exige `inadimplente_em` (data); `valor_inadimplencia` e `inadimplencia_observacao` opcionais. So contratos `assinado`.
+- **regularizar_inadimplencia**: limpa os 3 campos de inadimplencia.
 - **excluir**: soft delete (`excluido_em` + `excluido_por`).
 - **restaurar**: desfaz soft delete.
 
@@ -227,7 +233,7 @@ ANTHROPIC_MODEL=              # opcional (default claude-sonnet-4-5)
 ### O que o cliente NAO VE
 - Dashboard financeiro CONSOLIDADO da Etax (todas as empresas), secao "Por empresa", card "Aguardando aprovacao". (O cliente tem o proprio `/financeiro`, restrito ao seu workspace.)
 - Filtros de empresa e mes no dashboard.
-- Acoes administrativas no detalhe do contrato (toggle dashboard, marcar aditivo, distrato, excluir).
+- Acoes administrativas no detalhe do contrato (toggle dashboard, marcar aditivo, distrato, inadimplencia, excluir). O cliente VE a inadimplencia (badge + banner no detalhe, badge nas listas/pipeline, banner de risco no /financeiro), mas so o admin Etax marca/regulariza.
 - Natureza financeira do modelo no detalhe do contrato.
 - Banners "Excluido do dashboard" e "Contrato excluido".
 - Paginas inteiras: `/confeccao`, `/empresas`, `/modelos`, `/mentorados`, `/assinaturas`, `/configuracoes` (redirect para `/dashboard`).

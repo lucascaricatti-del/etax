@@ -219,6 +219,9 @@ function ContratoCard({
         </div>
         <div className="flex gap-1.5 flex-shrink-0 flex-wrap">
           <StatusBadge status={c.status_assinatura} />
+          {c.inadimplente_em && c.status_assinatura === "assinado" && (
+            <StatusBadge status="inadimplente" />
+          )}
           {c.status_vigencia && c.status_assinatura === "assinado" && (
             <StatusBadge status={c.status_vigencia} />
           )}

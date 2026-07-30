@@ -35,6 +35,7 @@ export default async function ContratoDetailPage({
       `id, tipo, valor, status_assinatura, status_vigencia, vigencia_inicio, vigencia_fim,
        assinado_em, criado_em, pdf_assinado_path, workspace_id, natureza_documento,
        contrato_pai_id, conta_no_dashboard, data_distrato, valor_distrato,
+       inadimplente_em, valor_inadimplencia, inadimplencia_observacao,
        excluido_em, excluido_por, modelo_id, clicksign_envelope_id,
        contraparte:contrapartes(id, nome, cpf_cnpj),
        workspace:workspaces(id, nome, nome_fantasia),
@@ -74,6 +75,8 @@ export default async function ContratoDetailPage({
   const isExcluido = !!contrato.excluido_em;
   const isDistratado = contrato.status_assinatura === "distratado";
   const isAditivo = contrato.natureza_documento === "aditivo";
+  const isInadimplente =
+    !!contrato.inadimplente_em && contrato.status_assinatura === "assinado";
 
   // Fetch related data in parallel (all depend on contrato but not on each other)
   const [paisResult, paiResult, aditivosResult] = await Promise.all([
@@ -157,6 +160,7 @@ export default async function ContratoDetailPage({
         </div>
         <div className="flex gap-1.5 flex-wrap">
           <StatusBadge status={contrato.status_assinatura} />
+          {isInadimplente && <StatusBadge status="inadimplente" />}
           {contrato.status_vigencia && contrato.status_assinatura === "assinado" && (
             <StatusBadge status={contrato.status_vigencia} />
           )}
@@ -177,6 +181,26 @@ export default async function ContratoDetailPage({
           <p className="text-xs text-[var(--color-text-soft)] mt-0.5">
             Este contrato foi excluído e não aparece nos cálculos.
           </p>
+        </div>
+      )}
+
+      {/* Inadimplência banner — visível para Etax E cliente */}
+      {isInadimplente && (
+        <div className="etax-card mb-4 border-l-4 border-[var(--color-status-danger)] bg-[var(--color-status-danger-bg)]">
+          <p className="text-sm font-medium text-[var(--color-status-danger)]">
+            Contrato inadimplente
+          </p>
+          <p className="text-xs text-[var(--color-text-soft)] mt-0.5">
+            Em atraso desde{" "}
+            {new Date(contrato.inadimplente_em + "T00:00:00").toLocaleDateString("pt-BR")}
+            {contrato.valor_inadimplencia != null &&
+              ` · Valor em aberto: ${formatBRL(contrato.valor_inadimplencia)}`}
+          </p>
+          {contrato.inadimplencia_observacao && (
+            <p className="text-xs text-[var(--color-text-soft)] mt-1">
+              {contrato.inadimplencia_observacao}
+            </p>
+          )}
         </div>
       )}
 
@@ -378,6 +402,11 @@ export default async function ContratoDetailPage({
               contrato_pai_id: contrato.contrato_pai_id,
               excluido_em: contrato.excluido_em,
               workspace_id: contrato.workspace_id,
+              inadimplente_em: contrato.inadimplente_em,
+              valor_inadimplencia: contrato.valor_inadimplencia,
+              inadimplencia_observacao: contrato.inadimplencia_observacao,
+              data_distrato: contrato.data_distrato,
+              valor_distrato: contrato.valor_distrato,
             }}
             possiveisPais={possiveisPais}
           />
