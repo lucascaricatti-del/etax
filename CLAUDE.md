@@ -224,7 +224,7 @@ ANTHROPIC_MODEL=              # opcional (default claude-sonnet-4-5)
 ## Permissoes do Cliente (visao)
 
 ### O que o cliente VE
-- **Dashboard**: 3 KPIs (contratos ativos, aguardando assinatura, assinados no mes), contratos recentes, vencimentos proximos.
+- **Dashboard**: 3 KPIs segmentados (contratos ativos, aguardando assinatura, assinados no mes) — cada card mostra qtd + valor R$ total + breakdown por tipo de contrato (qtd e R$, via `fetchKpisSegmentados`; "ativos" = aguardando_assinatura + assinado, distratado nao conta), contratos recentes, vencimentos proximos.
 - **Contratos**: lista dos seus contratos, detalhe com contraparte/tipo/valor/status/datas/PDF.
 - **Solicitacoes**: lista e detalhe das suas solicitacoes, formulario de nova solicitacao.
 - **Equipe** (`/equipe`): membros do proprio workspace + convidar novos membros (gera link de convite, 7 dias). Usa a mesma API `POST /api/empresas/[id]/convites` — guard: Etax convida em qualquer workspace; cliente so no proprio (`sessao.workspaceIds`). Form compartilhado em `components/invite-form.tsx`.

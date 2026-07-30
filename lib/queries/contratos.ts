@@ -225,6 +225,73 @@ export async function fetchDashboardData(sessao: Sessao) {
   };
 }
 
+/** KPI segmentado por tipo de contrato: qtd + valor total + breakdown */
+export interface KpiSegmentado {
+  qtd: number;
+  valor: number;
+  porTipo: Array<{ tipo: string; qtd: number; valor: number }>;
+}
+
+function agregaPorTipo(
+  rows: Array<{ tipo: string | null; valor: number | null }>
+): KpiSegmentado {
+  const map = new Map<string, { qtd: number; valor: number }>();
+  let valorTotal = 0;
+  for (const r of rows) {
+    const tipo = r.tipo || "outros";
+    const v = r.valor ?? 0;
+    valorTotal += v;
+    const entry = map.get(tipo) ?? { qtd: 0, valor: 0 };
+    entry.qtd += 1;
+    entry.valor += v;
+    map.set(tipo, entry);
+  }
+  return {
+    qtd: rows.length,
+    valor: valorTotal,
+    porTipo: [...map.entries()]
+      .map(([tipo, e]) => ({ tipo, qtd: e.qtd, valor: e.valor }))
+      .sort((a, b) => b.valor - a.valor || b.qtd - a.qtd),
+  };
+}
+
+/**
+ * KPIs do dashboard do CLIENTE segmentados por tipo de contrato (qtd + R$).
+ * - ativos: aguardando_assinatura + assinado (distratado NAO conta como ativo)
+ * - aguardandoAssinatura: status aguardando_assinatura
+ * - assinadosMes: assinado no mês corrente (por assinado_em)
+ */
+export async function fetchKpisSegmentados(sessao: Sessao): Promise<{
+  ativos: KpiSegmentado;
+  aguardandoAssinatura: KpiSegmentado;
+  assinadosMes: KpiSegmentado;
+}> {
+  const supabase = createAdminClient();
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  function base() {
+    let q = supabase
+      .from("contratos")
+      .select("tipo, valor")
+      .is("excluido_em", null);
+    q = applyWorkspaceScope(q, sessao) as typeof q;
+    return q;
+  }
+
+  const [ativos, aguardando, assinados] = await Promise.all([
+    base().in("status_assinatura", ["aguardando_assinatura", "assinado"]),
+    base().eq("status_assinatura", "aguardando_assinatura"),
+    base().eq("status_assinatura", "assinado").gte("assinado_em", startOfMonth),
+  ]);
+
+  return {
+    ativos: agregaPorTipo(ativos.data ?? []),
+    aguardandoAssinatura: agregaPorTipo(aguardando.data ?? []),
+    assinadosMes: agregaPorTipo(assinados.data ?? []),
+  };
+}
+
 /**
  * Dados financeiros para o dashboard.
  * Regra de inclusão: status_assinatura='assinado', natureza_documento='principal',

@@ -3,7 +3,11 @@ import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
 import { redirect } from "next/navigation";
 import { formatBRL } from "@/lib/format";
-import { fetchDashboardData, fetchDashboardFinanceiro } from "@/lib/queries/contratos";
+import {
+  fetchDashboardData,
+  fetchDashboardFinanceiro,
+  fetchKpisSegmentados,
+} from "@/lib/queries/contratos";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DashboardFilters } from "./dashboard-filters";
 
@@ -34,11 +38,16 @@ export default async function DashboardPage({
   const financeiroPromise = isEtax
     ? fetchDashboardFinanceiro(sessao, { mes: params.mes, workspaceId: params.empresa })
     : Promise.resolve(null);
+  // KPIs segmentados por tipo (qtd + R$) — só na visão do cliente
+  const segmentadosPromise = isEtax
+    ? Promise.resolve(null)
+    : fetchKpisSegmentados(sessao);
 
-  const [wsResult, operacional, financeiro] = await Promise.all([
+  const [wsResult, operacional, financeiro, segmentados] = await Promise.all([
     workspacesPromise,
     operacionalPromise,
     financeiroPromise,
+    segmentadosPromise,
   ]);
 
   const workspaces = (wsResult.data ?? []) as { id: string; nome: string; nome_fantasia: string | null }[];
@@ -57,22 +66,24 @@ export default async function DashboardPage({
 
   // ─── CLIENT DASHBOARD ─────────────────────────────────
   if (!isEtax) {
+    // segmentados is guaranteed non-null here (only null for Etax)
+    const seg = segmentados!;
     const clientKpis = [
       {
         label: "Contratos ativos",
-        value: totalAtivos,
+        data: seg.ativos,
         color: "text-[var(--color-text)]",
         highlight: false,
       },
       {
         label: "Aguardando minha assinatura",
-        value: aguardandoAssinatura,
+        data: seg.aguardandoAssinatura,
         color: "text-[var(--color-status-warn)]",
-        highlight: aguardandoAssinatura > 0,
+        highlight: seg.aguardandoAssinatura.qtd > 0,
       },
       {
         label: "Assinados no mês",
-        value: assinadosMes,
+        data: seg.assinadosMes,
         color: "text-[var(--color-status-ok)]",
         highlight: false,
       },
@@ -84,7 +95,7 @@ export default async function DashboardPage({
           Dashboard
         </h1>
 
-        {/* Client KPIs */}
+        {/* Client KPIs — qtd + R$ total + segmentação por tipo */}
         <section className="mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {clientKpis.map((kpi) => (
@@ -95,9 +106,36 @@ export default async function DashboardPage({
                 <p className="text-xs text-[var(--color-text-mute)] uppercase tracking-wide mb-1">
                   {kpi.label}
                 </p>
-                <p className={`text-2xl font-semibold ${kpi.color}`}>
-                  {kpi.value}
-                </p>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <p className={`text-2xl font-semibold ${kpi.color}`}>
+                    {kpi.data.qtd}
+                  </p>
+                  {kpi.data.valor > 0 && (
+                    <p className="text-sm font-medium text-[var(--color-text-soft)]">
+                      {formatBRL(kpi.data.valor)}
+                    </p>
+                  )}
+                </div>
+                {kpi.data.porTipo.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-[var(--color-line)] space-y-1">
+                    {kpi.data.porTipo.map((t) => (
+                      <div
+                        key={t.tipo}
+                        className="flex items-center justify-between gap-2 text-xs"
+                      >
+                        <span className="capitalize text-[var(--color-text-soft)]">
+                          {t.tipo}{" "}
+                          <span className="font-semibold text-[var(--color-text)]">
+                            {t.qtd}
+                          </span>
+                        </span>
+                        <span className="text-[var(--color-text-mute)] flex-shrink-0">
+                          {formatBRL(t.valor)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
