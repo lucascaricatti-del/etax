@@ -73,7 +73,7 @@ Restrictas a `papel_etax = 'admin'` via `PATCH /api/contratos/[id]`:
 
 ## Menu
 **Console Etax:** Dashboard, Empresas (workspaces), Solicitacoes, Confeccao, Assinaturas, Contratos, Modelos, Configuracoes.
-**Cliente:** Dashboard, Pipeline (`/pipeline` — kanban em 3 colunas: Solicitacao feita / Aguardando assinatura / Assinado; colunas 2-3 usam `contratos.status_assinatura`, nunca o status da solicitacao, que congela em `enviada_assinatura` por design), Meus Contratos, Minhas Solicitacoes, Equipe (`/equipe` — membros do workspace + convidar novos membros).
+**Cliente:** Dashboard, Pipeline (`/pipeline` — kanban em 3 colunas: Solicitacao feita / Aguardando assinatura / Assinado; colunas 2-3 usam `contratos.status_assinatura`, nunca o status da solicitacao, que congela em `enviada_assinatura` por design), Financeiro (`/financeiro` — visao financeira do proprio workspace por periodo), Meus Contratos, Minhas Solicitacoes, Equipe (`/equipe` — membros do workspace + convidar novos membros).
 
 ## Tipos e campos (MVP: Club e Tracao)
 - **Club (PJ):** razao_social, cnpj, endereco, cep, rep_nome, cpf, rg, endereco_rep_legal, email, valor_total, valor_extenso, **parcelas** (parcelamento flexivel, ver secao abaixo), vencimento.
@@ -222,9 +222,10 @@ ANTHROPIC_MODEL=              # opcional (default claude-sonnet-4-5)
 - **Contratos**: lista dos seus contratos, detalhe com contraparte/tipo/valor/status/datas/PDF.
 - **Solicitacoes**: lista e detalhe das suas solicitacoes, formulario de nova solicitacao.
 - **Equipe** (`/equipe`): membros do proprio workspace + convidar novos membros (gera link de convite, 7 dias). Usa a mesma API `POST /api/empresas/[id]/convites` — guard: Etax convida em qualquer workspace; cliente so no proprio (`sessao.workspaceIds`). Form compartilhado em `components/invite-form.tsx`.
+- **Financeiro** (`/financeiro`, cliente-only; Etax redireciona p/ /dashboard): visao financeira do PROPRIO workspace por periodo (intervalo de meses). Filtros: atalhos (este mes, 3m, 6m, 12m, este ano), De/Ate (selects de mes, 24 meses) e tipo de contrato — via URL params `de`/`ate`/`tipo` (default: ultimos 6 meses). KPIs: receita bruta, churn, receita liquida, despesas, contratos assinados, ticket medio. Grafico de evolucao mensal em CSS puro (barras receita/churn/despesa + receita liquida por mes), breakdown de receita por tipo de contrato (com share %) e lista de contratos/distratos do periodo. Query: `fetchFinanceiroPeriodo` em `lib/queries/contratos.ts` — mesma regra de inclusao do dashboard financeiro (assinado + principal + conta_no_dashboard + nao excluido; churn por `data_distrato`), escopado por `applyWorkspaceScope`.
 
 ### O que o cliente NAO VE
-- Dashboard financeiro (receita/churn/despesas), secao "Por empresa", card "Aguardando aprovacao".
+- Dashboard financeiro CONSOLIDADO da Etax (todas as empresas), secao "Por empresa", card "Aguardando aprovacao". (O cliente tem o proprio `/financeiro`, restrito ao seu workspace.)
 - Filtros de empresa e mes no dashboard.
 - Acoes administrativas no detalhe do contrato (toggle dashboard, marcar aditivo, distrato, excluir).
 - Natureza financeira do modelo no detalhe do contrato.

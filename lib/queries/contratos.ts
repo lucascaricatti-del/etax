@@ -387,3 +387,202 @@ export async function fetchDashboardFinanceiro(
     distratados,
   };
 }
+
+/**
+ * Visão financeira por PERÍODO (intervalo de meses) — usada em /financeiro (cliente).
+ * Mesma regra de inclusão do dashboard financeiro:
+ * assinado + principal + conta_no_dashboard + excluido_em IS NULL.
+ * Churn por data_distrato dentro do período.
+ * Agrega totais, série mensal e breakdown por tipo de contrato.
+ */
+export interface FinanceiroPeriodoFilters {
+  de?: string; // "YYYY-MM" — default: 5 meses antes de `ate` (janela de 6 meses)
+  ate?: string; // "YYYY-MM" — default: mês atual
+  tipo?: string; // filtra por tipo de contrato
+}
+
+export interface FinanceiroMes {
+  mes: string; // "YYYY-MM"
+  receita: number;
+  despesa: number;
+  churn: number;
+  liquida: number; // receita - churn
+  qtdAssinados: number;
+}
+
+export interface ContratoPeriodo {
+  id: string;
+  tipo: string;
+  valor: number | null;
+  assinado_em: string | null;
+  data_distrato: string | null;
+  valor_distrato: number | null;
+  natureza_financeira: string;
+  contraparte_nome: string;
+}
+
+function mesKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export async function fetchFinanceiroPeriodo(
+  sessao: Sessao,
+  filters?: FinanceiroPeriodoFilters
+) {
+  const supabase = createAdminClient();
+
+  const now = new Date();
+  let ateStr = filters?.ate || mesKey(now);
+  let deStr = filters?.de || "";
+  if (!deStr) {
+    const [ay, am] = ateStr.split("-").map(Number);
+    deStr = mesKey(new Date(ay, am - 1 - 5, 1));
+  }
+  if (deStr > ateStr) {
+    const tmp = deStr;
+    deStr = ateStr;
+    ateStr = tmp;
+  }
+
+  const [dy, dm] = deStr.split("-").map(Number);
+  const [ay, am] = ateStr.split("-").map(Number);
+  const periodoStart = new Date(dy, dm - 1, 1).toISOString();
+  const periodoEnd = new Date(ay, am, 0, 23, 59, 59, 999).toISOString();
+  const distratoStart = `${deStr}-01`;
+  const distratoEnd = `${ateStr}-${String(new Date(ay, am, 0).getDate()).padStart(2, "0")}`;
+
+  const selectFields =
+    "id, tipo, valor, assinado_em, data_distrato, valor_distrato, modelo:modelos(natureza_financeira), contraparte:contrapartes(nome)";
+
+  let qAssinados = supabase
+    .from("contratos")
+    .select(selectFields)
+    .eq("status_assinatura", "assinado")
+    .eq("natureza_documento", "principal")
+    .eq("conta_no_dashboard", true)
+    .is("excluido_em", null)
+    .gte("assinado_em", periodoStart)
+    .lte("assinado_em", periodoEnd)
+    .order("assinado_em", { ascending: false });
+
+  let qDistratados = supabase
+    .from("contratos")
+    .select(selectFields)
+    .eq("status_assinatura", "distratado")
+    .eq("natureza_documento", "principal")
+    .eq("conta_no_dashboard", true)
+    .is("excluido_em", null)
+    .gte("data_distrato", distratoStart)
+    .lte("data_distrato", distratoEnd)
+    .order("data_distrato", { ascending: false });
+
+  qAssinados = applyWorkspaceScope(qAssinados, sessao);
+  qDistratados = applyWorkspaceScope(qDistratados, sessao);
+
+  if (filters?.tipo) {
+    qAssinados = qAssinados.eq("tipo", filters.tipo);
+    qDistratados = qDistratados.eq("tipo", filters.tipo);
+  }
+
+  const [resAssinados, resDistratados] = await Promise.all([
+    qAssinados,
+    qDistratados,
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function mapRow(row: any): ContratoPeriodo {
+    const modelo = row.modelo as { natureza_financeira: string } | null;
+    const contraparte = row.contraparte as { nome: string } | null;
+    return {
+      id: row.id,
+      tipo: row.tipo,
+      valor: row.valor,
+      assinado_em: row.assinado_em,
+      data_distrato: row.data_distrato,
+      valor_distrato: row.valor_distrato,
+      natureza_financeira: modelo?.natureza_financeira ?? "receita",
+      contraparte_nome: contraparte?.nome ?? "—",
+    };
+  }
+
+  const assinados = (resAssinados.data ?? []).map(mapRow);
+  const distratados = (resDistratados.data ?? []).map(mapRow);
+
+  const receitas = assinados.filter((c) => c.natureza_financeira === "receita");
+  const despesas = assinados.filter((c) => c.natureza_financeira === "despesa");
+
+  const receitaBruta = receitas.reduce((sum, c) => sum + (c.valor ?? 0), 0);
+  const churn = distratados.reduce((sum, c) => sum + (c.valor_distrato ?? 0), 0);
+  const receitaLiquida = receitaBruta - churn;
+  const despesaTotal = despesas.reduce((sum, c) => sum + (c.valor ?? 0), 0);
+  const ticketMedio = receitas.length > 0 ? receitaBruta / receitas.length : 0;
+
+  // Série mensal: um bucket por mês do período
+  const mesesMap = new Map<string, FinanceiroMes>();
+  const cursor = new Date(dy, dm - 1, 1);
+  const fim = new Date(ay, am - 1, 1);
+  while (cursor <= fim) {
+    const key = mesKey(cursor);
+    mesesMap.set(key, {
+      mes: key,
+      receita: 0,
+      despesa: 0,
+      churn: 0,
+      liquida: 0,
+      qtdAssinados: 0,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  for (const c of assinados) {
+    if (!c.assinado_em) continue;
+    const bucket = mesesMap.get(mesKey(new Date(c.assinado_em)));
+    if (!bucket) continue;
+    if (c.natureza_financeira === "despesa") {
+      bucket.despesa += c.valor ?? 0;
+    } else {
+      bucket.receita += c.valor ?? 0;
+      bucket.qtdAssinados += 1;
+    }
+  }
+  for (const c of distratados) {
+    if (!c.data_distrato) continue;
+    // data_distrato é DATE ("YYYY-MM-DD") — extrai o mês direto da string
+    const bucket = mesesMap.get(c.data_distrato.slice(0, 7));
+    if (!bucket) continue;
+    bucket.churn += c.valor_distrato ?? 0;
+  }
+  for (const m of mesesMap.values()) {
+    m.liquida = m.receita - m.churn;
+  }
+  const meses = Array.from(mesesMap.values());
+
+  // Breakdown por tipo (só receitas)
+  const tipoMap = new Map<string, { tipo: string; qtd: number; total: number }>();
+  for (const c of receitas) {
+    const key = c.tipo || "—";
+    if (!tipoMap.has(key)) {
+      tipoMap.set(key, { tipo: key, qtd: 0, total: 0 });
+    }
+    const t = tipoMap.get(key)!;
+    t.qtd += 1;
+    t.total += c.valor ?? 0;
+  }
+  const porTipo = Array.from(tipoMap.values()).sort((a, b) => b.total - a.total);
+
+  return {
+    de: deStr,
+    ate: ateStr,
+    receitaBruta,
+    churn,
+    receitaLiquida,
+    despesaTotal,
+    ticketMedio,
+    qtdAssinados: receitas.length,
+    qtdDistratos: distratados.length,
+    meses,
+    porTipo,
+    assinados,
+    distratados,
+  };
+}
