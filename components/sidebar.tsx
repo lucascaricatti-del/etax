@@ -39,6 +39,7 @@ const CLIENTE_NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Meus Contratos", href: "/contratos", icon: Files },
   { label: "Minhas Solicitações", href: "/solicitacoes", icon: FileText },
+  { label: "Equipe", href: "/equipe", icon: Users },
 ];
 
 export function Sidebar({

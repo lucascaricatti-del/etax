@@ -8,11 +8,18 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const sessao = await getSessao();
-  if (!sessao?.isEtax) {
-    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  if (!sessao) {
+    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
   const { id: workspaceId } = await params;
+
+  // Etax convida em qualquer workspace; cliente só no próprio
+  const isMember = sessao.workspaceIds.includes(workspaceId);
+  if (!sessao.isEtax && !isMember) {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  }
+
   const body = await request.json();
   const { email, papel } = body;
 

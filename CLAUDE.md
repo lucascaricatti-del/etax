@@ -73,7 +73,7 @@ Restrictas a `papel_etax = 'admin'` via `PATCH /api/contratos/[id]`:
 
 ## Menu
 **Console Etax:** Dashboard, Empresas (workspaces), Solicitacoes, Confeccao, Assinaturas, Contratos, Modelos, Configuracoes.
-**Cliente:** Solicitacoes (nova + lista), Contratos (os seus).
+**Cliente:** Dashboard, Meus Contratos, Minhas Solicitacoes, Equipe (`/equipe` — membros do workspace + convidar novos membros).
 
 ## Tipos e campos (MVP: Club e Tracao)
 - **Club (PJ):** razao_social, cnpj, endereco, cep, rep_nome, cpf, rg, endereco_rep_legal, email, valor_total, valor_extenso, **parcelas** (parcelamento flexivel, ver secao abaixo), vencimento.
@@ -221,6 +221,7 @@ ANTHROPIC_MODEL=              # opcional (default claude-sonnet-4-5)
 - **Dashboard**: 3 KPIs (contratos ativos, aguardando assinatura, assinados no mes), contratos recentes, vencimentos proximos.
 - **Contratos**: lista dos seus contratos, detalhe com contraparte/tipo/valor/status/datas/PDF.
 - **Solicitacoes**: lista e detalhe das suas solicitacoes, formulario de nova solicitacao.
+- **Equipe** (`/equipe`): membros do proprio workspace + convidar novos membros (gera link de convite, 7 dias). Usa a mesma API `POST /api/empresas/[id]/convites` — guard: Etax convida em qualquer workspace; cliente so no proprio (`sessao.workspaceIds`). Form compartilhado em `components/invite-form.tsx`.
 
 ### O que o cliente NAO VE
 - Dashboard financeiro (receita/churn/despesas), secao "Por empresa", card "Aguardando aprovacao".

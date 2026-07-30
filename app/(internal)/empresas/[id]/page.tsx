@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessao } from "@/lib/auth";
 import { StatusBadge } from "@/components/status-badge";
-import { InviteForm } from "./invite-form";
+import { InviteForm } from "@/components/invite-form";
 import { EditEmpresaForm } from "./edit-empresa-form";
 import { Eye } from "lucide-react";
 
