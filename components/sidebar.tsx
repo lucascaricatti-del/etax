@@ -14,6 +14,7 @@ import {
   Users,
   FileBox,
   Settings,
+  SquareKanban,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ const ETAX_NAV: NavItem[] = [
 
 const CLIENTE_NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Pipeline", href: "/pipeline", icon: SquareKanban },
   { label: "Meus Contratos", href: "/contratos", icon: Files },
   { label: "Minhas Solicitações", href: "/solicitacoes", icon: FileText },
   { label: "Equipe", href: "/equipe", icon: Users },

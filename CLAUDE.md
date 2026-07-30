@@ -73,7 +73,7 @@ Restrictas a `papel_etax = 'admin'` via `PATCH /api/contratos/[id]`:
 
 ## Menu
 **Console Etax:** Dashboard, Empresas (workspaces), Solicitacoes, Confeccao, Assinaturas, Contratos, Modelos, Configuracoes.
-**Cliente:** Dashboard, Meus Contratos, Minhas Solicitacoes, Equipe (`/equipe` — membros do workspace + convidar novos membros).
+**Cliente:** Dashboard, Pipeline (`/pipeline` — kanban em 3 colunas: Solicitacao feita / Aguardando assinatura / Assinado; colunas 2-3 usam `contratos.status_assinatura`, nunca o status da solicitacao, que congela em `enviada_assinatura` por design), Meus Contratos, Minhas Solicitacoes, Equipe (`/equipe` — membros do workspace + convidar novos membros).
 
 ## Tipos e campos (MVP: Club e Tracao)
 - **Club (PJ):** razao_social, cnpj, endereco, cep, rep_nome, cpf, rg, endereco_rep_legal, email, valor_total, valor_extenso, **parcelas** (parcelamento flexivel, ver secao abaixo), vencimento.
